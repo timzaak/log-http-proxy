@@ -32,7 +32,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
 
   import actorSystem.dispatcher
 
-  val backend = Slf4jLoggingBackend(
+  private val backend = Slf4jLoggingBackend(
     PekkoHttpBackend(),
     LogConfig(
       logRequestBody = false,
@@ -44,7 +44,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
     )
   )
 
-  val proxyEndpoint = endpoint
+  private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
     .in(streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .out(headers)
@@ -64,7 +64,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
       }
     }
 
-  val streamingRoute: Route = PekkoHttpServerInterpreter().toRoute(proxyEndpoint)
+  private val streamingRoute: Route = PekkoHttpServerInterpreter().toRoute(proxyEndpoint)
 
 
   private def loadPemFiles(certPath: String, keyPath: String): (PrivateKey, Array[X509Certificate]) = {

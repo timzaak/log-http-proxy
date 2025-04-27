@@ -1,12 +1,8 @@
 import com.timzaak.proxy.{CustomDnsResolver, ReverseProxy}
-import mainargs.{ParserForClass, ParserForMethods, arg, main}
+import mainargs.{ParserForMethods, arg, main}
 
-import java.net.InetAddress
 
 object Main {
-
-
-
 
   @main
   def argsRun(
