@@ -3,7 +3,6 @@ package com.timzaak.proxy
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.{HttpsConnectionContext, *}
 import org.apache.pekko.http.scaladsl.server.Route
-import org.apache.pekko.stream.scaladsl.Sink
 import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
 import org.bouncycastle.cert.X509CertificateHolder
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
@@ -12,8 +11,6 @@ import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.tapir.*
 import sttp.client4.*
-import sttp.client4.logging.LogConfig
-import sttp.client4.logging.slf4j.Slf4jLoggingBackend
 import sttp.client4.pekkohttp.PekkoHttpBackend
 import sttp.model.Header
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
@@ -22,8 +19,6 @@ import java.io.FileReader
 import java.security.{KeyStore, PrivateKey, SecureRandom}
 import javax.net.ssl.{SSLContext, TrustManagerFactory}
 import java.security.cert.X509Certificate
-import scala.concurrent.Await
-import scala.concurrent.duration.*
 
 
 class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
@@ -32,17 +27,10 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
 
   import actorSystem.dispatcher
 
-  private val backend = Slf4jLoggingBackend(
-    PekkoHttpBackend(),
-    LogConfig(
-      logRequestBody = false,
-      logResponseBody = false,
-      logRequestHeaders = true,
-      logResponseHeaders = true,
-      sensitiveHeaders = Set.empty,
-      //responseLogLevel =  _ => LogConfig.LogLevel.Info,
-    )
-  )
+  private val backend = PekkoHttpBackend()
+
+  private val output = HttpRequestFormat()
+
 
   private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
@@ -50,17 +38,16 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
     .out(headers)
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
-
+      val(id, startTime) = output.logRequestHeader(request)
       val result = basicRequest
         .headers(request.headers*)
         .method(request.method, request.uri)
-        .streamBody(PekkoStreams)(body.alsoTo(Sink.foreach(v => println(v.utf8String))))
+        .streamBody(PekkoStreams)(output.logRequestBody(request, body))
         .response(asStreamAlwaysUnsafe(PekkoStreams))
         .send(backend)
 
-      result.map{result =>
-
-        result.headers.toList -> result.body.alsoTo(Sink.foreach(v => println(v.utf8String)))
+      result.map{ result =>
+        output.logResponseHeader(result).toList -> output.logResponseBody(id, startTime, result, result.body)
       }
     }
 
