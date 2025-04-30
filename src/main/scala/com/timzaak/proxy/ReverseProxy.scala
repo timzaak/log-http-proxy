@@ -128,14 +128,12 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
   }
 
 
-  def startServer(): Unit = {
-    val (privateKey, certChain) =loadPemFiles(publicSSLPath, privateSSLPath)
+  def startServer() = {
+    val (privateKey, certChain) = loadPemFiles(publicSSLPath, privateSSLPath)
     val bindAndCheck = Http()
       .newServerAt("0.0.0.0", 443)
       .enableHttps(createSSLContext(privateKey, certChain))
-      .bindFlow(streamingRoute).flatMap(_.whenTerminated)
-
-    Await.result(bindAndCheck, Duration.Inf)
-    println("over")
+      .bindFlow(streamingRoute)
+    bindAndCheck
   }
 }
