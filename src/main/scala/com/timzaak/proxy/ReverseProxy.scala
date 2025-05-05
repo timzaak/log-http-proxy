@@ -31,7 +31,6 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
 
   private val output = HttpRequestFormat()
 
-
   private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
     .in(streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))

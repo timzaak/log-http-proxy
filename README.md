@@ -1,20 +1,19 @@
 ## https proxy
-print inputs and outputs to console.
+It's mitm proxy, but you need the domain ssl certificate and private key. It's for test and log for the development of the software which
+is hard to capture the https request and response. 
 
 ### Requires
 1. require JDK 19+
-2. https certificate and key
+2. https cert and private key
 
 
 ### Usage
-If you want to get all requests and responses about `www.exmample.com`
+If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 
 1. change domain ip like:`127.0.0.1 www.example.com`
 2. run commands below:
 ```shell
 ### run with sbt
 sbt "runMain Main --dns=192.168.3.3:www.example.com --public=ssl.cer --private=ssl.key"
-
-
 ```
 
 ### Package as command-line tools

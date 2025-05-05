@@ -16,7 +16,6 @@ object CustomDnsResolver {
     customMappings.put(host, ip)
   }
 
-  // 移除自定义映射
   def removeMapping(host: String): Unit = {
     customMappings.remove(host)
   }
@@ -47,11 +46,5 @@ class CustomDnsResolver extends InetAddressResolverProvider {
   }
 
   override def name(): String = "proxy-dns-resolver"
-  // 添加自定义映射
 
-  // 清除JVM DNS缓存
-  private def clearDnsCache(): Unit = {
-    System.setProperty("networkaddress.cache.ttl", "0")
-    System.setProperty("networkaddress.cache.negative.ttl", "0")
-  }
 }
