@@ -8,19 +8,18 @@ import sttp.tapir.model.ServerRequest
 
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
+import java.util.concurrent.atomic.AtomicLong
 
 class HttpRequestFormat(
                          requestHeaderFilter: Header => Boolean = _ => true,
                          responseHeaderFilter: Header => Boolean = _ => true,
                        ) {
+  var index:AtomicLong = AtomicLong(0)
+  private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-  var  index:Long = 0
-  val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
-
-  def logRequestHeader(req:ServerRequest) = {
+  def logRequestHeader(req:ServerRequest): (Long, LocalDateTime) = {
     val now = LocalDateTime.now()
-    index+=1
-    val id = index
+    val id = index.incrementAndGet()
     println(s"[${id}] ${now.format(dateTimeFormatter)} ")
     println("Request Headers:")
     req.headers.collect {
@@ -33,7 +32,7 @@ class HttpRequestFormat(
   }
 
 
-  def logRequestBody(req:ServerRequest, body:PekkoStreams.BinaryStream) = {
+  def logRequestBody(req:ServerRequest, body:PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     req.contentTypeParsed match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
         body.alsoTo(Sink.foreach(v => print(v.utf8String))).mapMaterializedValue( _ => println(""))
@@ -42,7 +41,7 @@ class HttpRequestFormat(
     }
   }
 
-  def logResponseHeader(resp:Response[?]) = {
+  def logResponseHeader(resp:Response[?]): Seq[Header] = {
     println("Response Headers:")
     resp.headers.collect {
       case header if responseHeaderFilter(header) =>
@@ -52,8 +51,7 @@ class HttpRequestFormat(
     resp.headers
   }
 
-  def logResponseBody(id:Long, start:LocalDateTime, resp:Response[?], body:PekkoStreams.BinaryStream) = {
-
+  def logResponseBody(id:Long, start:LocalDateTime, resp:Response[?], body:PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
         body.alsoTo(Sink.foreach(v => print(v.utf8String))).mapMaterializedValue { _ =>
