@@ -37,16 +37,17 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
     .out(headers)
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
-      val(id, startTime) = output.logRequestHeader(request)
+      val record = output.beginRecord()
+
       val result = basicRequest
         .headers(request.headers*)
         .method(request.method, request.uri)
-        .streamBody(PekkoStreams)(output.logRequestBody(request, body))
+        .streamBody(PekkoStreams)(record.requestBody(request, body))
         .response(asStreamAlwaysUnsafe(PekkoStreams))
         .send(backend)
 
       result.map{ result =>
-        output.logResponseHeader(result).toList -> output.logResponseBody(id, startTime, result, result.body)
+        result.headers.toList -> record.responseBody(result, result.body)
       }
     }
 

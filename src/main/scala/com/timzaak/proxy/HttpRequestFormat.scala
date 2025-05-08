@@ -4,7 +4,7 @@ import org.apache.pekko.stream.scaladsl.Sink
 import org.apache.pekko.util.ByteString
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client4.Response
-import sttp.model.{Header, MediaType, Method}
+import sttp.model.{ Header, MediaType, Method }
 import sttp.tapir.model.ServerRequest
 
 import java.time.format.DateTimeFormatter
@@ -12,72 +12,93 @@ import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicLong
 import scala.concurrent.ExecutionContext
 
-//TODO: multiple thread support
-class HttpRequestFormat(
-                         requestHeaderFilter: Header => Boolean = _ => true,
-                         responseHeaderFilter: Header => Boolean = _ => true,
-                       )(using ExecutionContext) {
+private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-  var index:AtomicLong = AtomicLong(0)
-  private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
+class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFilter: Header => Boolean)(using
+  ExecutionContext
+) {
+  private val startTime: LocalDateTime = LocalDateTime.now()
+  private val buf = StringBuffer()
 
-  def logRequestHeader(req:ServerRequest): (Long, LocalDateTime) = {
-    val now = LocalDateTime.now()
-    val id = index.incrementAndGet()
-    println(s"[${id}] ${now.format(dateTimeFormatter)} ${req.method} ${req.uri}")
-    req.headers.collect {
-      case header if requestHeaderFilter(header) =>
-        println(s"  ${header.name}: ${header.value}")
+  def requestBody(req: ServerRequest, body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
+    val headerDesc = req.headers
+      .collect {
+        case header if requestHeaderFilter(header) =>
+          s"  ${header.name}: ${header.value}"
+      }
+      .mkString("\n")
+    buf.append(s"${startTime.format(dateTimeFormatter)} [$id] ${req.method} ${req.uri} ##TIME##\n")
+    if (headerDesc.nonEmpty) {
+      buf.append(headerDesc)
+      buf.append("\nBody:\n")
+    } else {
+      buf.append("Body:\n")
     }
-    id -> now
-  }
 
-  def logRequestBody(req:ServerRequest, body:PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     req.method match {
       case Method.POST | Method.PUT | Method.PATCH if !req.contentLength.contains(0) =>
-        println("Body:")
         req.contentTypeParsed match {
           case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
-            body.alsoTo(Sink.foreach[ByteString](v => print(v.utf8String)).mapMaterializedValue( _.onComplete(_ => println(""))))
+            body.alsoTo(
+              Sink
+                .foreach[ByteString](v => buf.append(v.utf8String))
+                .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
+            )
           case _ =>
-            body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete(_=> println("[request body can not parser]"))))
+            body.alsoTo(
+              Sink.ignore.mapMaterializedValue(_.onComplete(_ => buf.append("[request body can not parser]\n")))
+            )
         }
       case _ =>
         body
     }
   }
 
-  def logResponseHeader(resp:Response[?]): Seq[Header] = {
-    println(s"Response: ${resp.code.code}")
-    resp.headers.collect {
-      case header if responseHeaderFilter(header) =>
-        println(s"  ${header.name}: ${header.value}")
+  def responseBody(resp: Response[?], body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
+    val headerDesc = resp.headers
+      .collect {
+        case header if requestHeaderFilter(header) =>
+          s"  ${header.name}: ${header.value}"
+      }
+      .mkString("\n")
+    buf.append(s"Response: ${resp.code.code}\n")
+    if (headerDesc.nonEmpty) {
+      buf.append(headerDesc)
+      buf.append("\nBody:\n")
+    } else {
+      buf.append("Body:\n")
     }
-    resp.headers
-  }
-
-  def logResponseBody(id:Long, start:LocalDateTime, resp:Response[?], body:PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
-    println("Body:")
     val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
-        body.alsoTo(Sink.foreach[ByteString](v => print(v.utf8String)).mapMaterializedValue {
-          _.onComplete{ _ =>
-            val now = LocalDateTime.now()
-            // 获取 now 和 start 的差值，并转换为毫秒
-            val duration = java.time.Duration.between(start, now)
-            println(s"\n[$id] cost time: ${duration.toMillis}ms")
+        body.alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String)).mapMaterializedValue {
+          _.onComplete { _ =>
+            output()
           }
         })
       case _ =>
-        body.alsoTo(Sink.ignore.mapMaterializedValue{_ =>
-          val now = LocalDateTime.now()
-          // 获取 now 和 start 的差值，并转换为毫秒
-          val duration = java.time.Duration.between(start, now)
-          println("[response body can not parser]")
-          println(s"[$id] cost time: ${duration.toMillis}ms")
-        })
+        body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
+          buf.append(s"[response body can not parser]\n")
+          output()
+        }))
     }
     newBody
   }
+  private def output(): Unit = {
+    val now = LocalDateTime.now()
+    // 获取 now 和 start 的差值，并转换为毫秒
+    val duration = java.time.Duration.between(startTime, now)
+    println(buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
+  }
 
+}
+
+class HttpRequestFormat(
+  requestHeaderFilter: Header => Boolean = _ => true,
+  responseHeaderFilter: Header => Boolean = _ => true,
+)(using ec: ExecutionContext) {
+
+  var index: AtomicLong = AtomicLong(0)
+
+  def beginRecord(): Record =
+    Record(index.incrementAndGet(), requestHeaderFilter, responseHeaderFilter)(using ec)
 }
