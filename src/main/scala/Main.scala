@@ -34,7 +34,7 @@ object Main {
 
       println(
         s"""proxy server is up, listening 443 port.
-          |please change hosts config:
+          |please add hosts config:
           |$changedHosts
           |""".stripMargin)
 
