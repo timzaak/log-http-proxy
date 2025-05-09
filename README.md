@@ -30,4 +30,7 @@ cd package/app/bin
 
 ```
 
-You can download JRE to package/jre lib and set environment `BUNDLED_JVM=../../jre`,  `zip ./package` and distribute it.
+package as exe:
+```shell
+jpackage --name https-proxy --input lib --main-jar https-proxy.https-proxy-0.1.0.jar --main-class Main --type app-image --win-console
+```

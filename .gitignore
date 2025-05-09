@@ -31,3 +31,6 @@ metals.sbt
 .idea_modules
 /.worksheet/
 package
+
+local_dist.ps1
+bak
