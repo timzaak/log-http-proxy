@@ -1,6 +1,7 @@
 package com.timzaak.proxy
 
 import com.timzaak.proxy.CustomDnsResolver.customMappings
+import org.xbill.DNS.{AAAARecord, ARecord, ExtendedResolver, Lookup}
 
 import java.net.InetAddress
 import java.net.spi.{InetAddressResolver, InetAddressResolverProvider}
@@ -11,6 +12,7 @@ import scala.jdk.CollectionConverters.*
 
 object CustomDnsResolver {
   private val customMappings = new ConcurrentHashMap[String, String]()
+  private var resolver:Option[ExtendedResolver] = None
 
   def addMapping(host: String, ip: String): Unit = {
     customMappings.put(host, ip)
@@ -22,6 +24,11 @@ object CustomDnsResolver {
   def getMapping(host: String): Option[String] = {
     Option(customMappings.get(host))
   }
+
+  def setResolver(resolvers: String) = {
+    resolver = Some(ExtendedResolver(resolvers.split(',')))
+  }
+
 }
 
 class CustomDnsResolver extends InetAddressResolverProvider {
@@ -32,7 +39,19 @@ class CustomDnsResolver extends InetAddressResolverProvider {
         case Some(ip) =>
           Seq(InetAddress.getByAddress(host, InetAddress.getByName(ip).getAddress)).asJava.stream()
         case None =>
-          util.Arrays.stream(InetAddress.getAllByName(host))
+          CustomDnsResolver.resolver match {
+            case None => util.Arrays.stream(InetAddress.getAllByName(host))
+            case Some(resolver) =>
+              val lookup = Lookup(host)
+              lookup.setResolver(resolver)
+              Option(lookup.run()) match {
+                case None => stream.Stream.empty()
+                case Some(list) => util.Arrays.stream(list.collect {
+                  case r: ARecord =>  r.getAddress
+                  case r: AAAARecord =>  r.getAddress
+                })
+              }
+          }
       }
     }
 

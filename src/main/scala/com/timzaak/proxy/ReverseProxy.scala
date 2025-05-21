@@ -22,7 +22,7 @@ import java.security.cert.X509Certificate
 
 
 class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
-
+  
   given actorSystem: ActorSystem = ActorSystem()
 
   import actorSystem.dispatcher

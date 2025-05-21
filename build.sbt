@@ -27,6 +27,7 @@ lazy val root = project
         Seq(
           "com.lihaoyi" %% "mainargs" % "0.7.6",
           "com.github.pathikrit" %% "better-files" % "3.9.2",
+          "dnsjava"% "dnsjava"% "3.6.3",
           //"com.github.monkeywie" % "proxyee" % "1.7.6",
           "org.scalameta" %% "munit" % "1.1.0" % Test)
   ).enablePlugins(JavaServerAppPackaging)

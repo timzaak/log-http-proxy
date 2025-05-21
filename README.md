@@ -12,6 +12,7 @@ If you want to install self-signed certificate, you could use [mkcert](https://g
 mkcert -install
 mkcert -key-file ssl.key -cert-file ssl.cer www.example.com *.example.com
 ```
+PS: please make sure JAVA_HOME environment is correctly set. otherwise mkcert would'n inject CA to java truststore.
 
 ### Usage
 If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 

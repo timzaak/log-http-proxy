@@ -11,17 +11,15 @@ object Main {
   def argsRun(
                @arg(doc = "dns, format like 192.168.0.1:www.example.com") dns:List[String],
                @arg(doc = "public ssl path") public: String,
-               @arg(doc = "private ssl path") `private`: String
+               @arg(doc = "private ssl path") `private`: String,
+               @arg(doc ="example: 1.1.1.1,8.8.8.8") resolver: Option[String],
              ): Unit = {
     val dnsPairs = dns.map { d =>
       val Array(ip, domain) = d.split(':')
       domain -> ip
     }
 
-    if(dnsPairs.isEmpty) {
-      println("dns is empty")
-      sys.exit(-1)
-    }
+    resolver.foreach(CustomDnsResolver.setResolver)
 
     dnsPairs.foreach(CustomDnsResolver.addMapping)
 
@@ -31,13 +29,16 @@ object Main {
     val bindAndCheck = proxy.startServer()
     Await.result(bindAndCheck.flatMap{v=>
       val changedHosts = dnsPairs.map((domain, _) => s"127.0.0.1 $domain").mkString("\n")
-
-      println(
-        s"""proxy server is up, listening 443 port.
-          |please add hosts config:
-          |$changedHosts
-          |""".stripMargin)
-
+      val buf = StringBuffer("proxy server is up, listening 443 port.\n")
+      if(changedHosts.nonEmpty) {
+        buf.append(s"additional host config:\n$changedHosts\n")
+      }
+      if(resolver.nonEmpty) {
+        buf.append(s"dns resolver:\n${resolver.get}\n")
+      } else {
+        buf.append(s"dns resolver:\nSystem DNS Resolver\n")
+      }
+      println(buf.toString)
       v.whenTerminated
     }, Duration.Inf)
   }
