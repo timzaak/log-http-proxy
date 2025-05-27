@@ -27,7 +27,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
 
   import actorSystem.dispatcher
 
-  private val backend = PekkoHttpBackend()
+  private val backend = PekkoHttpBackend.usingActorSystem(actorSystem)
 
   private val output = HttpRequestFormat()
 
