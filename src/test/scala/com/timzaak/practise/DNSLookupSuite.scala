@@ -1,11 +1,8 @@
 package com.timzaak.practise
 
+import com.timzaak.proxy.CustomDnsResolver
 import munit.FunSuite
 import org.xbill.DNS.*
-import org.xbill.DNS.lookup.LookupSession
-import org.xbill.DNS.lookup.LookupSession.LookupSessionBuilder
-
-import scala.jdk.CollectionConverters.*
 
 class DNSLookupSuite extends FunSuite {
   test("DNS lookup") {
@@ -26,26 +23,14 @@ class DNSLookupSuite extends FunSuite {
     }
 
   }
-  test("lookup session") {
-    val domain = "www.google.com"
-    val resolver = ExtendedResolver(Array("8.8.8.8", "1.1.1.1"))
 
 
-
-//    val lookup = LookupSession.defaultBuilder().resolver(resolver).build()
-//    val result = lookup.lookupAsync(Name.fromString(domain), Type.A, DClass.IN)
-//    val r = result.toCompletableFuture.thenApply(lookupResult => {
-//      val records = lookupResult.getRecords
-//      if (records == null) {
-//        java.util.stream.Stream.empty()
-//      } else {
-//        records.asScala.collect {
-//          case r: ARecord => r.getAddress
-//          case r: AAAARecord => r.getAddress
-//        }.asJava.stream()
-//      })
-//    println(r)
-//    println(r)
+  test("ip") {
+    CustomDnsResolver.setResolver("114.114.114.114")
+    val z = Address.getAllByName("www.example.com")
+    z.foreach(println)
   }
 
+
+  
 }

@@ -1,7 +1,7 @@
 package com.timzaak.proxy
 
 import com.timzaak.proxy.CustomDnsResolver.customMappings
-import org.xbill.DNS.{AAAARecord, ARecord, ExtendedResolver, Lookup, ResolverConfig}
+import org.xbill.DNS.{AAAARecord, ARecord, Address, ExtendedResolver, Lookup, ResolverConfig}
 
 import java.net.InetAddress
 import java.net.spi.{InetAddressResolver, InetAddressResolverProvider}
@@ -30,8 +30,8 @@ object CustomDnsResolver {
     val r = ExtendedResolver(resolvers.split(','))
     r.setIgnoreTruncation(true)
     Lookup.setDefaultResolver(r)
+    Lookup.setDefaultHostsFileParser(null)
     resolver = Some(r)
-
   }
 
 }
@@ -44,19 +44,7 @@ class CustomDnsResolver extends InetAddressResolverProvider {
         case Some(ip) =>
           Seq(InetAddress.getByAddress(host, InetAddress.getByName(ip).getAddress)).asJava.stream()
         case None =>
-          CustomDnsResolver.resolver match {
-            case None => util.Arrays.stream(InetAddress.getAllByName(host))
-            case Some(resolver) =>
-              val lookup = Lookup(host)
-              lookup.setHostsFileParser(null)
-              Option(lookup.run()) match {
-                case None => stream.Stream.empty()
-                case Some(list) => util.Arrays.stream(list.collect {
-                  case r: ARecord =>  r.getAddress
-                  case r: AAAARecord =>  r.getAddress
-                })
-              }
-          }
+          util.Arrays.stream(Address.getAllByName(host))
       }
     }
 

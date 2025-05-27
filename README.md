@@ -12,7 +12,7 @@ If you want to install self-signed certificate, you could use [mkcert](https://g
 mkcert -install
 mkcert -key-file ssl.key -cert-file ssl.cer www.example.com *.example.com
 ```
-PS: please make sure JAVA_HOME environment is correctly set. otherwise mkcert would'n inject CA to java truststore.
+PS: please make sure JAVA_HOME environment is correctly set. otherwise, mkcert would'n inject CA to java truststore.
 
 ### Usage
 If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 
@@ -20,18 +20,16 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 2. run commands below:
 ```shell
 # run with sbt
-sbt "runMain Main --dns=192.168.3.3:www.example.com --public=ssl.cer --private=ssl.key"
+sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassword=123456"
 ```
 
 ### Package as command-line tool
 ```shell
 ### you can package it with the following command: 
-sbt universal:packageBin
-cp target/universal/app.zip ./package/app.zip
-unzip app.zip
-cd package/app
+sbt stage
+cd package
 
 version="0.1.0"
-jpackage --name https-proxy --input lib --main-jar https-proxy.https-proxy-${version}.jar --main-class Main --type app-image --win-console
+jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar https-proxy.https-proxy-${version}.jar --main-class Main --type app-image --win-console
 
 ```

@@ -10,8 +10,8 @@ object Main {
   @main
   def argsRun(
                @arg(doc = "dns, format like 192.168.0.1:www.example.com") dns:List[String],
-               @arg(doc = "public ssl path") public: String,
-               @arg(doc = "private ssl path") `private`: String,
+               @arg(doc = "jks file path") jksPath: String,
+               @arg(doc = "jks password") jksPassword: String,
                @arg(doc ="example: 1.1.1.1,8.8.8.8") resolver: Option[String],
              ): Unit = {
     val dnsPairs = dns.map { d =>
@@ -23,7 +23,7 @@ object Main {
 
     dnsPairs.foreach(CustomDnsResolver.addMapping)
 
-    val proxy = ReverseProxy(public, `private`)
+    val proxy = ReverseProxy(jksPath, jksPassword)
     import proxy.actorSystem.dispatcher
 
     val bindAndCheck = proxy.startServer()

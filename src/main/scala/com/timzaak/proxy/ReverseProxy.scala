@@ -3,11 +3,6 @@ package com.timzaak.proxy
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.{HttpsConnectionContext, *}
 import org.apache.pekko.http.scaladsl.server.Route
-import org.bouncycastle.asn1.pkcs.PrivateKeyInfo
-import org.bouncycastle.cert.X509CertificateHolder
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter
-import org.bouncycastle.openssl.{PEMKeyPair, PEMParser}
-import org.bouncycastle.openssl.jcajce.JcaPEMKeyConverter
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.tapir.*
 import sttp.client4.*
@@ -15,13 +10,10 @@ import sttp.client4.pekkohttp.PekkoHttpBackend
 import sttp.model.Header
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
 
-import java.io.FileReader
-import java.security.{KeyStore, PrivateKey, SecureRandom}
-import javax.net.ssl.{SSLContext, TrustManagerFactory}
-import java.security.cert.X509Certificate
 
 
-class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
+
+class ReverseProxy(jksPath:String, jksPassword:String) {
   
   given actorSystem: ActorSystem = ActorSystem()
 
@@ -53,7 +45,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
 
   private val streamingRoute: Route = PekkoHttpServerInterpreter().toRoute(proxyEndpoint)
 
-
+/*
   private def loadPemFiles(certPath: String, keyPath: String): (PrivateKey, Array[X509Certificate]) = {
     // 加载私钥
     val keyReader = new FileReader(keyPath)
@@ -75,7 +67,7 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
     pemCertParser.close()
 
     val certConverter = new org.bouncycastle.cert.jcajce.JcaX509CertificateConverter()
-      //.setProvider("BC")
+      .setProvider("BC")
     val certificate = certConverter.getCertificate(certHolder)
 
     (privateKey, Array(certificate))
@@ -113,13 +105,15 @@ class ReverseProxy(publicSSLPath:String, privateSSLPath:String) {
     )
     ConnectionContext.httpsServer(sslContext)
   }
+ */
 
 
   def startServer() = {
-    val (privateKey, certChain) = loadPemFiles(publicSSLPath, privateSSLPath)
+    // Security.addProvider(new BouncyCastleProvider())
     val bindAndCheck = Http()
       .newServerAt("0.0.0.0", 443)
-      .enableHttps(createSSLContext(privateKey, certChain))
+      .enableHttps(ConnectionContext.httpsServer(SSLContextProvider.fromJKS(jksPath, jksPassword)))
+      //.enableHttps(createSSLContext(privateKey, certChain))
       .bindFlow(streamingRoute)
     bindAndCheck
   }

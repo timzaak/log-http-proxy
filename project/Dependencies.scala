@@ -7,18 +7,18 @@ object Dependencies {
   )
 
   lazy val httpClient = {
-    val version = "4.0.3"
+    val version = "4.0.7"
     Seq(
       "com.softwaremill.sttp.client4" %% "core" % version,
       "com.softwaremill.sttp.client4" %% "circe" % version,
       "com.softwaremill.sttp.client4" %% "pekko-http-backend" % version,
       "com.softwaremill.sttp.client4" %% "slf4j-backend" % version,
-      "org.bouncycastle" % "bcpkix-jdk15on" % "1.70",
+      "org.bouncycastle" % "bcpkix-jdk18on" % "1.80",
     )
   }
 
   lazy val tapir = {
-    val version = "1.11.25"
+    val version = "1.11.32"
     val circeVersion = "0.14.9"
     Seq(
       "io.circe" %% "circe-core",
