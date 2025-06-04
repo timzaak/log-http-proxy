@@ -33,3 +33,8 @@ version="0.1.0"
 jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar https-proxy.https-proxy-${version}.jar --main-class Main --type app-image --win-console
 
 ```
+
+
+### Known Issue
+1. Request does not support brotli compression, would drop header Accept-Encoding.
+2. response would decode compression and drop header Content-Encoding.

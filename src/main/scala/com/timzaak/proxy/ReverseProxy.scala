@@ -22,6 +22,8 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
   private val backend = PekkoHttpBackend.usingActorSystem(actorSystem)
 
   private val output = HttpRequestFormat()
+  
+  private val proxyReq = basicRequest//.disableAutoDecompression
 
   private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
@@ -30,8 +32,7 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
       val record = output.beginRecord()
-
-      val result = basicRequest
+      val result = proxyReq
         .headers(request.headers.filterNot(_.name.equalsIgnoreCase(HeaderNames.AcceptEncoding))*)
         .method(request.method, request.uri)
         .streamBody(PekkoStreams)(record.requestBody(request, body))

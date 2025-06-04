@@ -70,6 +70,7 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
     }
     val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
+        // Decompressor.decompressIfPossible(response, encoding.value, compressionHandlers.decompressors)
         body.alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String)).mapMaterializedValue {
           _.onComplete { _ =>
             output()
