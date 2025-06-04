@@ -37,4 +37,3 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 
 ### Known Issue
 1. Request does not support brotli compression, would drop header Accept-Encoding.
-2. response would decode compression and drop header Content-Encoding.

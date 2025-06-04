@@ -38,7 +38,7 @@ object Main {
       } else {
         buf.append(s"dns resolver:\nSystem DNS Resolver\n")
       }
-      buf.append(s"Attention: request header Accept-Encoding would override to gzip, deflate(pekko does not support brotli), response header Content-Encoding would drop\n")
+      buf.append(s"Attention: request header Accept-Encoding would override to gzip, deflate (pekko does not support brotli)\n")
       println(buf.toString)
       v.whenTerminated
     }, Duration.Inf)

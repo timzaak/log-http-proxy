@@ -23,7 +23,7 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
 
   private val output = HttpRequestFormat()
   
-  private val proxyReq = basicRequest//.disableAutoDecompression
+  private val proxyReq = basicRequest.disableAutoDecompression
 
   private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
@@ -39,7 +39,7 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
         .response(asStreamAlwaysUnsafe(PekkoStreams))
         .send(backend)
       result.map{ result =>
-        result.headers.toList.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding)) -> record.responseBody(result, result.body)
+        result.headers.toList/*.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding))*/ -> record.responseBody(result, result.body)
       }
     }
 

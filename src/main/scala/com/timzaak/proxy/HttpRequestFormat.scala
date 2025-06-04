@@ -1,6 +1,9 @@
 package com.timzaak.proxy
 
-import org.apache.pekko.stream.scaladsl.Sink
+import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.coding.Coders
+import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.*
 import org.apache.pekko.util.ByteString
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client4.Response
@@ -10,13 +13,14 @@ import sttp.tapir.model.ServerRequest
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
 import java.util.concurrent.atomic.AtomicLong
-import scala.concurrent.ExecutionContext
 
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFilter: Header => Boolean)(using
-  ExecutionContext
+  actorSystem: ActorSystem
 ) {
+  import actorSystem.dispatcher
+
   private val startTime: LocalDateTime = LocalDateTime.now()
   private val buf = StringBuffer()
 
@@ -70,12 +74,29 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
     }
     val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
-        // Decompressor.decompressIfPossible(response, encoding.value, compressionHandlers.decompressors)
-        body.alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String)).mapMaterializedValue {
-          _.onComplete { _ =>
-            output()
-          }
-        })
+        resp
+          .header("content-encoding")
+          .flatMap(encoding => List(Coders.Gzip, Coders.Deflate).find(_.encoding.value == encoding)) match {
+          case Some(decompressor) =>
+            body.alsoTo(
+              Flow[ByteString]
+                .fold(ByteString.empty)(_ ++ _)
+                .mapAsync(1)(v =>
+                  decompressor
+                    .decode(v)(summon[org.apache.pekko.stream.Materializer])
+                    .map(v => buf.append(v.utf8String))
+                )
+                .to(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
+                  output()
+                }))
+            )
+          case None =>
+            body.alsoTo(
+              Sink
+                .foreach[ByteString](v => buf.append(v.utf8String))
+                .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
+            )
+        }
       case _ =>
         body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
           buf.append(s"[response body can not parser]\n")
@@ -96,7 +117,7 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
 class HttpRequestFormat(
   requestHeaderFilter: Header => Boolean = _ => true,
   responseHeaderFilter: Header => Boolean = _ => true,
-)(using ec: ExecutionContext) {
+)(using ec: ActorSystem) {
 
   var index: AtomicLong = AtomicLong(0)
 
