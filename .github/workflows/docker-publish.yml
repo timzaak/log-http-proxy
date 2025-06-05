@@ -18,9 +18,10 @@ jobs:
     - uses: coursier/setup-action@v1
       with:
         jvm: temurin:21
+        apps: sbt bloop sbtn
 
     - name: Run SBT stage
-      run: sbt clean stage # This command compiles the app and stages it in target/universal/stage
+      run: sbt clean stage
 
 #    - name: Log in to the GitHub Container Registry
 #      uses: docker/login-action@v3
