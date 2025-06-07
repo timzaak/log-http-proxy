@@ -1,11 +1,10 @@
 ## https proxy
-It's mitm proxy, but you need the domain ssl certificate and private key. It's for test and log for the development of the software which
-is hard to capture the https request and response. 
+It's mitm proxy, especially for https. It outputs the https request and response for test.
 
 ### Requires
 1. require JDK 19+
 2. https cert and private key
-
+3. https certificate.
 
 If you want to install self-signed certificate, you could use [mkcert](https://github.com/FiloSottile/mkcert) to do this.
 ```shell
@@ -36,4 +35,9 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 
 
 ### Known Issue
-1. Request does not support brotli compression, would drop header Accept-Encoding.
+1. Request does not support brotli compression, would drop request header: Accept-Encoding.
+
+### TODO
+1. [ ] Generate CA file with command.
+2. [ ] Auto create ssl certificates automatically with config.
+3. [ ] use as http/https proxy.
