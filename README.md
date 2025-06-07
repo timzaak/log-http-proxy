@@ -41,3 +41,4 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 1. [ ] Generate CA file with command.
 2. [ ] Auto create ssl certificates automatically with config.
 3. [ ] use as http/https proxy.
+4. [ ] web viewer to show log,filter by request ip.
