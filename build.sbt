@@ -1,4 +1,4 @@
-val scala3Version = "3.6.4"
+val scala3Version = "3.7.1"
 import Dependencies.*
 
 
