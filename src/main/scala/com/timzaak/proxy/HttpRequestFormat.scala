@@ -16,7 +16,11 @@ import java.util.concurrent.atomic.AtomicLong
 
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
-class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFilter: Header => Boolean)(using
+class Record(
+  id: Long,
+  serverRequest: ServerRequest,
+  log: (ServerRequest, String) => Unit,
+)(using
   actorSystem: ActorSystem
 ) {
   import actorSystem.dispatcher
@@ -26,9 +30,8 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
 
   def requestBody(req: ServerRequest, body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     val headerDesc = req.headers
-      .collect {
-        case header if requestHeaderFilter(header) =>
-          s"  ${header.name}: ${header.value}"
+      .collect { case header =>
+        s"  ${header.name}: ${header.value}"
       }
       .mkString("\n")
     buf.append(s"${startTime.format(dateTimeFormatter)} [$id] ${req.method} ${req.uri} ##TIME##\n")
@@ -60,9 +63,8 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
 
   def responseBody(resp: Response[?], body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     val headerDesc = resp.headers
-      .collect {
-        case header if requestHeaderFilter(header) =>
-          s"  ${header.name}: ${header.value}"
+      .collect { case header =>
+        s"  ${header.name}: ${header.value}"
       }
       .mkString("\n")
     buf.append(s"Response: ${resp.code.code}\n")
@@ -107,20 +109,18 @@ class Record(id: Long, requestHeaderFilter: Header => Boolean, responseHeaderFil
   }
   private def output(): Unit = {
     val now = LocalDateTime.now()
-    // 获取 now 和 start 的差值，并转换为毫秒
     val duration = java.time.Duration.between(startTime, now)
-    println(buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
+    log(serverRequest, buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
   }
 
 }
 
 class HttpRequestFormat(
-  requestHeaderFilter: Header => Boolean = _ => true,
-  responseHeaderFilter: Header => Boolean = _ => true,
+  log: (ServerRequest, String) => Unit = (_, body) => println(body),
 )(using ec: ActorSystem) {
 
   var index: AtomicLong = AtomicLong(0)
 
-  def beginRecord(): Record =
-    Record(index.incrementAndGet(), requestHeaderFilter, responseHeaderFilter)(using ec)
+  def beginRecord(req: ServerRequest): Record =
+    Record(index.incrementAndGet(), req, log)(using ec)
 }

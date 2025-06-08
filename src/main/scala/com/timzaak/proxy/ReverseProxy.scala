@@ -10,19 +10,13 @@ import sttp.client4.pekkohttp.PekkoHttpBackend
 import sttp.model.HeaderNames
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
 
-
-
-
-class ReverseProxy(jksPath:String, jksPassword:String) {
+class ReverseProxy(jksPath: String, jksPassword: String, output:HttpRequestFormat)(using actorSystem:ActorSystem) {
   
-  given actorSystem: ActorSystem = ActorSystem()
 
   import actorSystem.dispatcher
 
   private val backend = PekkoHttpBackend.usingActorSystem(actorSystem)
 
-  private val output = HttpRequestFormat()
-  
   private val proxyReq = basicRequest.disableAutoDecompression
 
   private val proxyEndpoint = endpoint
@@ -31,21 +25,23 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
     .out(headers)
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
-      val record = output.beginRecord()
+      val record = output.beginRecord(request)
+      
       val result = proxyReq
         .headers(request.headers.filterNot(_.name.equalsIgnoreCase(HeaderNames.AcceptEncoding))*)
         .method(request.method, request.uri)
         .streamBody(PekkoStreams)(record.requestBody(request, body))
         .response(asStreamAlwaysUnsafe(PekkoStreams))
         .send(backend)
-      result.map{ result =>
-        result.headers.toList/*.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding))*/ -> record.responseBody(result, result.body)
+      result.map { result =>
+        result.headers.toList /*.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding))*/ -> record
+          .responseBody(result, result.body)
       }
     }
 
   private val streamingRoute: Route = PekkoHttpServerInterpreter().toRoute(proxyEndpoint)
 
-/*
+  /*
   private def loadPemFiles(certPath: String, keyPath: String): (PrivateKey, Array[X509Certificate]) = {
     // 加载私钥
     val keyReader = new FileReader(keyPath)
@@ -105,15 +101,14 @@ class ReverseProxy(jksPath:String, jksPassword:String) {
     )
     ConnectionContext.httpsServer(sslContext)
   }
- */
-
+   */
 
   def startServer() = {
     // Security.addProvider(new BouncyCastleProvider())
     val bindAndCheck = Http()
       .newServerAt("0.0.0.0", 443)
       .enableHttps(ConnectionContext.httpsServer(SSLContextProvider.fromJKS(jksPath, jksPassword)))
-      //.enableHttps(createSSLContext(privateKey, certChain))
+      // .enableHttps(createSSLContext(privateKey, certChain))
       .bindFlow(streamingRoute)
     bindAndCheck
   }
