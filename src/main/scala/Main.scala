@@ -1,9 +1,11 @@
 import com.timzaak.proxy.{ CustomDnsResolver, HttpRequestFormat, JKSConf, LogWebViewer, ReverseProxy }
 import mainargs.{ ParserForMethods, arg, main }
 import org.apache.pekko.actor.ActorSystem
+import sttp.tapir.model.ServerRequest
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
+import scala.util.{ Failure, Success }
 
 object Main {
 
@@ -13,6 +15,7 @@ object Main {
     @arg(doc = "jks file path") jksPath: Option[String],
     @arg(doc = "jks password") jksPassword: Option[String],
     @arg(doc = "example: 1.1.1.1,8.8.8.8") resolver: Option[String],
+    @arg(doc = "websocket port, output log via websocket, if not set, output log to cmd") websocketPort: Option[Int],
   ): Unit = {
     val dnsPairs = dns.map { d =>
       val Array(ip, domain) = d.split(':')
@@ -24,18 +27,28 @@ object Main {
     dnsPairs.foreach(CustomDnsResolver.addMapping)
 
     given actorSystem: ActorSystem = ActorSystem()
-    /*
-    val logWebViewer = LogWebViewer()
-    logWebViewer.startServer()
-    val proxy = ReverseProxy(jksPath, jksPassword, HttpRequestFormat(logWebViewer.call))
-     */
+    import actorSystem.dispatcher
+
+    val func = websocketPort match {
+      case Some(port) =>
+        val logWebViewer = LogWebViewer()
+        logWebViewer.startServer(port) onComplete {
+          case Failure(exception) => {
+            println(s"websocket server open error: $exception")
+            sys.exit(-1)
+          }
+          case Success(_) => println("websocket server open")
+        }
+        logWebViewer.call
+      case _ => (_: ServerRequest, data: String) => println(data)
+    }
 
     val jksConf = (jksPath, jksPassword) match {
       case (Some(path), Some(password)) => Some(JKSConf(path, password))
       case _                            => None
     }
 
-    val proxy = ReverseProxy(jksConf, HttpRequestFormat())
+    val proxy = ReverseProxy(jksConf, HttpRequestFormat(func))
     import actorSystem.dispatcher
 
     val bindAndCheck = proxy.startServer()

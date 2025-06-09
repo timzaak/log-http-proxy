@@ -27,8 +27,8 @@ class LogWebViewer(using system: ActorSystem) {
     manager ! ip -> data
   }
 
-  private val handler = endpoint.get
-    .in("ws")
+  val handler = endpoint.get
+    .in("_api_ws")
     .in(query[String]("ip"))
     .out(webSocketBody[String, CodecFormat.TextPlain, String, CodecFormat.TextPlain](PekkoStreams))
     .serverLogicSuccess { ip =>
@@ -45,10 +45,9 @@ class LogWebViewer(using system: ActorSystem) {
       Future.successful(flow)
     }
 
-
-  def startServer() = {
+  def startServer(port:Int) = {
     val bindAndCheck = Http()
-      .newServerAt("0.0.0.0", 9000)
+      .newServerAt("0.0.0.0", port)
       .bindFlow(PekkoHttpServerInterpreter().toRoute(handler))
     bindAndCheck
   }

@@ -37,9 +37,6 @@ class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using ac
           .responseBody(result, result.body)
       }
     }
-
-  private val streamingRoute: Route = PekkoHttpServerInterpreter().toRoute(proxyEndpoint)
-
   /*
   private def loadPemFiles(certPath: String, keyPath: String): (PrivateKey, Array[X509Certificate]) = {
     // 加载私钥
@@ -109,6 +106,6 @@ class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using ac
     for (conf <- jksConf) {
       bindAndCheck = bindAndCheck.enableHttps(ConnectionContext.httpsServer(SSLContextProvider.fromJKS(conf)))
     }
-    bindAndCheck.bindFlow(streamingRoute)
+    bindAndCheck.bindFlow(PekkoHttpServerInterpreter().toRoute(proxyEndpoint))
   }
 }
