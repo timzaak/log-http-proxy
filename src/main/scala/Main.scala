@@ -33,11 +33,11 @@ object Main {
       case Some(port) =>
         val logWebViewer = LogWebViewer()
         logWebViewer.startServer(port) onComplete {
-          case Failure(exception) => {
+          case Failure(exception) =>
             println(s"websocket server open error: $exception")
             sys.exit(-1)
-          }
-          case Success(_) => println("websocket server open")
+          case Success(v) =>
+            println(s"websocket server(${v.localAddress.getPort}) open")
         }
         logWebViewer.call
       case _ => (_: ServerRequest, data: String) => println(data)

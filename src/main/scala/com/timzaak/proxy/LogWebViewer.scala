@@ -28,7 +28,7 @@ class LogWebViewer(using system: ActorSystem) {
   }
 
   val handler = endpoint.get
-    .in("_api_ws")
+    .in("api_ws")
     .in(query[String]("ip"))
     .out(webSocketBody[String, CodecFormat.TextPlain, String, CodecFormat.TextPlain](PekkoStreams))
     .serverLogicSuccess { ip =>

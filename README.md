@@ -19,9 +19,12 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 2. run commands below:
 ```shell
 # run with sbt
-sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassword=123456"
-```
+sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassword=123456 --websocketPort=9000"
 
+# run client with websocket
+websocat ws://127.0.0.1:9000/api_ws?ip=127.0.0.1
+```
+[websocat](https://github.com/vi/websocat) is a websocket command line.
 ### Package as command-line tool
 ```shell
 ### you can package it with the following command: 
@@ -41,4 +44,3 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 1. [ ] Generate CA file with command.
 2. [ ] Auto create ssl certificates automatically with config.
 3. [ ] use as http/https proxy.
-4. [ ] web viewer to show log,filter by request ip.
