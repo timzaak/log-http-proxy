@@ -10,8 +10,7 @@ import sttp.client4.pekkohttp.PekkoHttpBackend
 import sttp.model.HeaderNames
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
 
-class ReverseProxy(jksPath: String, jksPassword: String, output:HttpRequestFormat)(using actorSystem:ActorSystem) {
-  
+class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using actorSystem: ActorSystem) {
 
   import actorSystem.dispatcher
 
@@ -26,7 +25,7 @@ class ReverseProxy(jksPath: String, jksPassword: String, output:HttpRequestForma
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
       val record = output.beginRecord(request)
-      
+
       val result = proxyReq
         .headers(request.headers.filterNot(_.name.equalsIgnoreCase(HeaderNames.AcceptEncoding))*)
         .method(request.method, request.uri)
@@ -105,11 +104,11 @@ class ReverseProxy(jksPath: String, jksPassword: String, output:HttpRequestForma
 
   def startServer() = {
     // Security.addProvider(new BouncyCastleProvider())
-    val bindAndCheck = Http()
-      .newServerAt("0.0.0.0", 443)
-      .enableHttps(ConnectionContext.httpsServer(SSLContextProvider.fromJKS(jksPath, jksPassword)))
-      // .enableHttps(createSSLContext(privateKey, certChain))
-      .bindFlow(streamingRoute)
-    bindAndCheck
+    var bindAndCheck = Http()
+      .newServerAt("0.0.0.0", jksConf.fold(80)(_ => 443))
+    for (conf <- jksConf) {
+      bindAndCheck = bindAndCheck.enableHttps(ConnectionContext.httpsServer(SSLContextProvider.fromJKS(conf)))
+    }
+    bindAndCheck.bindFlow(streamingRoute)
   }
 }

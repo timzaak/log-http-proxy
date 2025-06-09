@@ -61,7 +61,9 @@ class Record(
     }
   }
 
-  def responseBody(resp: Response[?], body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
+  def responseBody(resp: Response[?], body: PekkoStreams.BinaryStream)(using
+    org.apache.pekko.stream.Materializer
+  ): PekkoStreams.BinaryStream = {
     val headerDesc = resp.headers
       .collect { case header =>
         s"  ${header.name}: ${header.value}"
@@ -85,7 +87,7 @@ class Record(
                 .fold(ByteString.empty)(_ ++ _)
                 .mapAsync(1)(v =>
                   decompressor
-                    .decode(v)(summon[org.apache.pekko.stream.Materializer])
+                    .decode(v)
                     .map(v => buf.append(v.utf8String))
                 )
                 .to(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>

@@ -6,15 +6,15 @@ import java.security.KeyStore
 
 object SSLContextProvider {
 
-  def fromJKS(jksPath: String, password: String): SSLContext = {
-
+  def fromJKS(conf:JKSConf): SSLContext = {
+    
     val keyStore = KeyStore.getInstance("JKS")
-    val keyStoreStream = new FileInputStream(jksPath)
-    keyStore.load(keyStoreStream, password.toCharArray)
+    val keyStoreStream = new FileInputStream(conf.path)
+    keyStore.load(keyStoreStream, conf.password.toCharArray)
     keyStoreStream.close()
 
     val kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm)
-    kmf.init(keyStore, password.toCharArray)
+    kmf.init(keyStore, conf.password.toCharArray)
 
     val tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm)
     tmf.init(keyStore)
@@ -26,3 +26,5 @@ object SSLContextProvider {
 
   }
 }
+
+case class JKSConf(path: String, password: String)

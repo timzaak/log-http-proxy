@@ -1,4 +1,4 @@
-import com.timzaak.proxy.{ CustomDnsResolver, HttpRequestFormat, LogWebViewer, ReverseProxy }
+import com.timzaak.proxy.{ CustomDnsResolver, HttpRequestFormat, JKSConf, LogWebViewer, ReverseProxy }
 import mainargs.{ ParserForMethods, arg, main }
 import org.apache.pekko.actor.ActorSystem
 
@@ -10,8 +10,8 @@ object Main {
   @main
   def argsRun(
     @arg(doc = "dns, format like 192.168.0.1:www.example.com") dns: List[String],
-    @arg(doc = "jks file path") jksPath: String,
-    @arg(doc = "jks password") jksPassword: String,
+    @arg(doc = "jks file path") jksPath: Option[String],
+    @arg(doc = "jks password") jksPassword: Option[String],
     @arg(doc = "example: 1.1.1.1,8.8.8.8") resolver: Option[String],
   ): Unit = {
     val dnsPairs = dns.map { d =>
@@ -29,7 +29,13 @@ object Main {
     logWebViewer.startServer()
     val proxy = ReverseProxy(jksPath, jksPassword, HttpRequestFormat(logWebViewer.call))
      */
-    val proxy = ReverseProxy(jksPath, jksPassword, HttpRequestFormat())
+
+    val jksConf = (jksPath, jksPassword) match {
+      case (Some(path), Some(password)) => Some(JKSConf(path, password))
+      case _                            => None
+    }
+
+    val proxy = ReverseProxy(jksConf, HttpRequestFormat())
     import actorSystem.dispatcher
 
     val bindAndCheck = proxy.startServer()

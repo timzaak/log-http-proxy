@@ -1,7 +1,7 @@
 package com.timzaak.proxy
 
 import com.timzaak.proxy.CustomDnsResolver.customMappings
-import org.xbill.DNS.{AAAARecord, ARecord, Address, ExtendedResolver, Lookup, ResolverConfig}
+import org.xbill.DNS.{Address, ExtendedResolver, Lookup, ResolverConfig}
 
 import java.net.InetAddress
 import java.net.spi.{InetAddressResolver, InetAddressResolverProvider}
