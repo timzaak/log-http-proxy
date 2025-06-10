@@ -2,7 +2,6 @@ package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
 import org.apache.pekko.http.scaladsl.*
-import org.apache.pekko.http.scaladsl.server.Route
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.tapir.*
 import sttp.client4.*
@@ -25,9 +24,8 @@ class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using ac
     .out(sttp.tapir.streamBinaryBody(PekkoStreams)(CodecFormat.OctetStream()))
     .serverLogicSuccess { (request, body) =>
       val record = output.beginRecord(request)
-
       val result = proxyReq
-        .headers(request.headers.filterNot(_.name.equalsIgnoreCase(HeaderNames.AcceptEncoding))*)
+        .headers(request.headers.filterNot(v => v.name.equalsIgnoreCase(HeaderNames.AcceptEncoding) || v.name.equalsIgnoreCase(HeaderNames.RemoteAddress))*)
         .method(request.method, request.uri)
         .streamBody(PekkoStreams)(record.requestBody(request, body))
         .response(asStreamAlwaysUnsafe(PekkoStreams))

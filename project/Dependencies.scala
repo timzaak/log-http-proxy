@@ -7,7 +7,7 @@ object Dependencies {
   )
 
   lazy val httpClient = {
-    val version = "4.0.7"
+    val version = "4.0.8"
     Seq(
       "com.softwaremill.sttp.client4" %% "core" % version,
       "com.softwaremill.sttp.client4" %% "circe" % version,
@@ -18,7 +18,7 @@ object Dependencies {
   }
 
   lazy val tapir = {
-    val version = "1.11.32"
+    val version = "1.11.33"
     val circeVersion = "0.14.9"
     Seq(
       "io.circe" %% "circe-core",

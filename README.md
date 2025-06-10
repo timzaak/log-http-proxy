@@ -1,5 +1,5 @@
 ## https proxy
-It's mitm proxy, especially for https. It outputs the https request and response for test.
+It's mitm http/https proxy. It outputs the https request and response for test.
 
 ### Requires
 1. require JDK 19+
@@ -19,12 +19,20 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 2. run commands below:
 ```shell
 # run with sbt
+
 sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassword=123456 --websocketPort=9000"
 
-# run client with websocket
+# run websocket client to get log
 websocat ws://127.0.0.1:9000/api_ws?ip=127.0.0.1
 ```
-[websocat](https://github.com/vi/websocat) is a websocket command line.
+[websocat](https://github.com/vi/websocat) is a websocket command line. and the params are:
+
+* dns: A list of domain-to-IP mappings in the format ip:domain. These mappings will be added to the DNS resolver.
+* jksPath: An optional path to a JKS file for SSL/TLS configuration.
+* jksPassword: An optional password for the JKS file specified by jksPath.
+* resolver: An optional custom DNS resolver address, e.g., 1.1.1.1, 8.8.8.8.
+* websocketPort: An optional port to start a WebSocket server for logging. If not provided, logs would output to the command line.
+
 ### Package as command-line tool
 ```shell
 ### you can package it with the following command: 
@@ -39,8 +47,9 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 
 ### Known Issue
 1. Request does not support brotli compression, would drop request header: Accept-Encoding.
+2. Request would drop header remote-address
 
 ### TODO
 1. [ ] Generate CA file with command.
-2. [ ] Auto create ssl certificates automatically with config.
+2. [ ] Auto creates ssl certificates automatically with config.
 3. [ ] use as http/https proxy.

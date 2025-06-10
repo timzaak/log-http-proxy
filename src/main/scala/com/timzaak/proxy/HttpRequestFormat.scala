@@ -98,7 +98,10 @@ class Record(
             body.alsoTo(
               Sink
                 .foreach[ByteString](v => buf.append(v.utf8String))
-                .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
+                .mapMaterializedValue(_.onComplete{_ =>
+                  buf.append("\n")
+                  output()
+                })
             )
         }
       case _ =>
