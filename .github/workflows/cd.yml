@@ -1,0 +1,38 @@
+name: Docker Image CI
+
+on:
+  # 输入version
+  workflow_dispatch:
+      inputs:
+          version:
+              description: 'version number'
+              required: true
+              default: '0.1.0'
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - uses: coursier/cache-action@v6
+      - uses: coursier/setup-action@v1
+        with:
+          jvm: temurin:21
+          apps: sbt bloop sbtn
+
+      - name: Run SBT stage
+        run: sbt clean stage
+
+      - name: package
+        run: jpackage --name https-proxy --input target/universal/stage/lib --main-jar https-proxy.https-proxy-${{ inputs.version }}.jar --main-class Main --type app-image --win-console
+      - name: release
+        # 上传 https-proxy 目录
+        uses: actions/upload-artifact@v4
+        with:
+            name: https-proxy-${{ inputs.version }}
+            path: https-proxy
+
+
