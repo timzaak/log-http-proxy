@@ -3,11 +3,11 @@ name: CD
 on:
   # 输入version
   workflow_dispatch:
-      inputs:
-          version:
-              description: 'version number'
-              required: true
-              default: '0.1.0'
+    inputs:
+      version:
+        description: 'version number'
+        required: true
+        default: '0.1.0'
 jobs:
   build_and_push:
     strategy:
@@ -22,7 +22,9 @@ jobs:
             artifact_os_name: windows
     runs-on: ${{ matrix.platform.os }}
     permissions:
-      contents: read
+      contents: write
+    outputs:
+      version: ${{ inputs.version }}
 
     steps:
       - name: Checkout repository
@@ -54,5 +56,32 @@ jobs:
           path: https-proxy
           if-no-files-found: error
 
+  create_release:
+    needs: build_and_push
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts/
+      - name: Compress Artifacts
+        run: |
+          mkdir -p compressed_artifacts
+          cd artifacts                  
+          zip -r ../compressed_artifacts/https-proxy-macos-${{ needs.build_and_push.outputs.version }}.zip https-proxy-macos-*
+          zip -r ../compressed_artifacts/https-proxy-ubuntu-${{ needs.build_and_push.outputs.version }}.zip https-proxy-ubuntu-*
+          zip -r ../compressed_artifacts/https-proxy-windows-${{ needs.build_and_push.outputs.version }}.zip https-proxy-windows-*
 
-
+      - name: Create Draft Release and Upload Assets
+        uses: softprops/action-gh-release@v2
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: v${{ needs.build_and_push.outputs.version }}
+          name: Release v${{ needs.build_and_push.outputs.version }}
+          draft: true
+          prerelease: false
+          files: |
+            compressed_artifacts/**
