@@ -15,7 +15,7 @@ jobs:
       matrix:
         platform:
           - os: ubuntu-latest
-            artifact_os_name: ubuntu
+            artifact_os_name: linux
           - os: macos-latest
             artifact_os_name: macos
           - os: windows-latest
