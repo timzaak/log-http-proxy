@@ -39,21 +39,21 @@ jobs:
         run: sbt clean stage
 
       - name: package
-        run: jpackage --name https-proxy --input target/universal/stage/lib --main-jar https-proxy.https-proxy-${{ inputs.version }}.jar --main-class Main --type app-image
+        run: jpackage --name log-http-proxy --input target/universal/stage/lib --main-jar log-http-proxy.log-http-proxy-${{ inputs.version }}.jar --main-class Main --type app-image
 
       - name: Upload macOS artifact
         if: matrix.platform.artifact_os_name == 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: https-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
-          path: https-proxy.app
+          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          path: log-http-proxy.app
           if-no-files-found: error
       - name: Upload Linux/Windows artifact
         if: matrix.platform.artifact_os_name != 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: https-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
-          path: https-proxy
+          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          path: log-http-proxy
           if-no-files-found: error
 
   create_release:
@@ -70,9 +70,9 @@ jobs:
         run: |
           mkdir -p compressed_artifacts
           cd artifacts                  
-          zip -r ../compressed_artifacts/https-proxy-macos-${{ needs.build_and_push.outputs.version }}.zip https-proxy-macos-*
-          zip -r ../compressed_artifacts/https-proxy-ubuntu-${{ needs.build_and_push.outputs.version }}.zip https-proxy-ubuntu-*
-          zip -r ../compressed_artifacts/https-proxy-windows-${{ needs.build_and_push.outputs.version }}.zip https-proxy-windows-*
+          zip -r ../compressed_artifacts/log-http-proxy-macos-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-macos-*
+          zip -r ../compressed_artifacts/log-http-proxy-ubuntu-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-ubuntu-*
+          zip -r ../compressed_artifacts/log-http-proxy-windows-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-windows-*
 
       - name: Create Draft Release and Upload Assets
         uses: softprops/action-gh-release@v2

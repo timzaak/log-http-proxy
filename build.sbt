@@ -18,7 +18,7 @@ Universal / mappings := {
 lazy val root = project
   .in(file("."))
   .settings(
-    name := "https-proxy",
+    name := "log-http-proxy",
     version := "0.1.0",
     scalaVersion := scala3Version,
     mainClass := Some("Main"),
