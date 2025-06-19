@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: CI
 
 on:
   push:
@@ -21,7 +21,7 @@ jobs:
         apps: sbt bloop sbtn
 
     - name: Run SBT stage
-      run: sbt clean stage
+      run: sbt stage
 
 #    - name: Log in to the GitHub Container Registry
 #      uses: docker/login-action@v3
