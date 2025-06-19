@@ -10,7 +10,17 @@ on:
               default: '0.1.0'
 jobs:
   build_and_push:
-    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        platform:
+          - os: ubuntu-latest
+            artifact_os_name: ubuntu
+          - os: macos-latest
+            artifact_os_name: macos
+          - os: windows-latest
+            artifact_os_name: windows
+    runs-on: ${{ matrix.platform.os }}
     permissions:
       contents: read
 
@@ -27,12 +37,22 @@ jobs:
         run: sbt clean stage
 
       - name: package
-        run: jpackage --name https-proxy --input target/universal/stage/lib --main-jar https-proxy.https-proxy-${{ inputs.version }}.jar --main-class Main --type app-image --win-console
-      - name: release
-        # 上传 https-proxy 目录
+        run: jpackage --name https-proxy --input target/universal/stage/lib --main-jar https-proxy.https-proxy-${{ inputs.version }}.jar --main-class Main --type app-image
+
+      - name: Upload macOS artifact
+        if: matrix.platform.artifact_os_name == 'macos'
         uses: actions/upload-artifact@v4
         with:
-            name: https-proxy-${{ inputs.version }}
-            path: https-proxy
+          name: https-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          path: https-proxy.app
+          if-no-files-found: error
+      - name: Upload Linux/Windows artifact
+        if: matrix.platform.artifact_os_name != 'macos'
+        uses: actions/upload-artifact@v4
+        with:
+          name: https-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          path: https-proxy
+          if-no-files-found: error
+
 
 
