@@ -5,6 +5,9 @@ import org.apache.pekko.http.scaladsl.coding.Coders
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.*
 import org.apache.pekko.util.ByteString
+import org.apache.pekko.http.scaladsl.model.{ ContentTypes, Multipart }
+import org.apache.pekko.http.scaladsl.unmarshalling.Unmarshal
+import scala.concurrent.Future
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client4.Response
 import sttp.model.{ Header, MediaType, Method }
@@ -45,7 +48,38 @@ class Record(
     req.method match {
       case Method.POST | Method.PUT | Method.PATCH if !req.contentLength.contains(0) =>
         req.contentTypeParsed match {
-          case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
+          case Some(v) if v.isMultipart =>
+            v.params.get("boundary") match {
+              case Some(boundaryStr) =>
+                val sinkForAlsoTo = Flow[ByteString]
+                  .via(Multipart.General.parser(boundaryStr))
+                  .mapAsync(1) { part: Multipart.General.Part => // Ensures sequential processing of parts for logging
+                    if (part.filename.isDefined) {
+                      part.entity.discardBytes() // Discard entity bytes of file part
+                      Future.successful(
+                        buf.append(s"[file part: ${part.name.getOrElse("unknown")} - ${part.filename.getOrElse("")} content not logged]\n")
+                      )
+                    } else {
+                      // Non-file part, collect its data
+                      part.entity.dataBytes.runFold(ByteString.empty)(_ ++ _).map { partBs =>
+                        buf.append(s"${part.name.getOrElse("unknown")}: ${partBs.utf8String}\n")
+                      }
+                    }
+                  }
+                  .toMat(Sink.ignore)(Keep.right) // Completes when all parts are processed and logged
+                  .mapMaterializedValue { futureDone =>
+                    futureDone.onComplete(_ => buf.append("\n")) // Appends the final newline for the entire multipart body
+                  }
+                body.alsoTo(sinkForAlsoTo)
+
+              case None =>
+                // No boundary, cannot parse multipart, log placeholder and return original body
+                body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete(_ =>
+                  buf.append("[multipart body detected, but boundary is missing - cannot parse parts]\n")
+                )))
+            }
+
+          case Some(v) if v.isText || v.isApplication || v.isMessage =>
             body.alsoTo(
               Sink
                 .foreach[ByteString](v => buf.append(v.utf8String))
