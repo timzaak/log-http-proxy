@@ -38,6 +38,13 @@ object Main {
             sys.exit(-1)
           case Success(v) =>
             println(s"websocket server(${v.localAddress.getPort}) open")
+            v.whenTerminated onComplete {
+              case Failure(exception) =>
+                println(s"websocket server close error: $exception")
+                sys.exit(-1)
+              case Success(v) =>
+                println(s"websocket server close")
+            }
         }
         logWebViewer.call
       case _ => (_: ServerRequest, data: String) => println(data)

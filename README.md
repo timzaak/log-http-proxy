@@ -24,6 +24,7 @@ sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassw
 
 # run websocket client to get log, ip is a filter to filter request
 websocat ws://127.0.0.1:9000/api_ws?ip=127.0.0.1
+# or just open your browser to access http://127.0.0.1:9000/viewer
 ```
 [websocat](https://github.com/vi/websocat) is a websocket command line. and the params are:
 
