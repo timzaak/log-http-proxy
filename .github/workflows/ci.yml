@@ -9,7 +9,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      #packages: write # Needed to push packages to ghcr.io
+      # packages: write # Needed to push packages to ghcr.io
 
     steps:
     - name: Checkout repository
@@ -28,11 +28,14 @@ jobs:
 #      with:
 #        registry: ghcr.io
 #        username: ${{ github.repository_owner }}
-#        password: ${{ secrets.GH_PAT }}
+#        password: ${{ secrets.GITHUB_TOKEN }}
 #
 #    - name: Build and push Docker image
 #      uses: docker/build-push-action@v5
 #      with:
-#        context: . # The Dockerfile is in the root
+#        context: .
+#        file: ./docker/Dockerfile
 #        push: true
-#        tags: ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+#        tags: |
+#          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:latest
+#          ghcr.io/${{ github.repository_owner }}/${{ github.event.repository.name }}:${{ github.sha }}
