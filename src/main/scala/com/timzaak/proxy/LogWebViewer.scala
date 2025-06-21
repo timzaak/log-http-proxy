@@ -1,10 +1,13 @@
 package com.timzaak.proxy
 
-import org.apache.pekko.actor.{ Actor, ActorRef, ActorSystem, PoisonPill, Props }
+import org.apache.pekko.actor.{Actor, ActorRef, ActorSystem, PoisonPill, Props}
+import org.apache.pekko.http.javadsl.model.headers.XForwardedFor
 import org.apache.pekko.http.scaladsl.*
+import org.apache.pekko.http.scaladsl.model.{AttributeKeys, HttpHeader, HttpRequest, RemoteAddress}
 import org.apache.pekko.stream.OverflowStrategy
 import org.apache.pekko.stream.scaladsl.*
 import sttp.capabilities.pekko.PekkoStreams
+import sttp.model.HeaderNames
 import sttp.tapir.*
 import sttp.tapir.model.ServerRequest
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
@@ -25,6 +28,15 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
 
   def call(request: ServerRequest, data: String) = {
     val ip = extractClientIP(request)
+    manager ! ip -> data
+  }
+
+  def call2(request:HttpRequest, data:String) = {
+
+    val ip = request.header[XForwardedFor].map(_.value)
+      .orElse(request.attribute[RemoteAddress](AttributeKeys.remoteAddress).flatMap(_.toIP.map(_.ip.getHostAddress)))
+      .getOrElse("")
+
     manager ! ip -> data
   }
 

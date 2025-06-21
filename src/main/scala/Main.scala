@@ -1,4 +1,4 @@
-import com.timzaak.proxy.{AppConfig, CustomDnsResolver, DNS, HttpRequestFormat, JKSConf, LogWebViewer, ReverseProxy}
+import com.timzaak.proxy.*
 import mainargs.{ParserForMethods, arg, main}
 import org.apache.pekko.actor.ActorSystem
 import sttp.tapir.model.ServerRequest
@@ -61,12 +61,13 @@ object Main {
                 println(s"websocket server close")
             }
         }
-        logWebViewer.call
-      case _ => (_: ServerRequest, data: String) => println(data)
+        logWebViewer.call2
+      case _ => (_: Any, data: String) => println(data)
     }
 
 
-    val proxy = ReverseProxy(config.jks, HttpRequestFormat(func))
+    //val proxy = ReverseProxy(config.jks, HttpRequestFormat(func))
+    val proxy = PekkoReverseProxy(config.jks, PekkoHttpRequestFormat(func))
     import actorSystem.dispatcher
 
     val bindAndCheck = proxy.startServer()
