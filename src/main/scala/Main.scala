@@ -1,11 +1,11 @@
-import com.timzaak.proxy.{ CustomDnsResolver, HttpRequestFormat, JKSConf, LogWebViewer, ReverseProxy }
-import mainargs.{ ParserForMethods, arg, main }
+import com.timzaak.proxy.{AppConfig, CustomDnsResolver, DNS, HttpRequestFormat, JKSConf, LogWebViewer, ReverseProxy}
+import mainargs.{ParserForMethods, arg, main}
 import org.apache.pekko.actor.ActorSystem
 import sttp.tapir.model.ServerRequest
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
-import scala.util.{ Failure, Success }
+import scala.util.{Failure, Success}
 
 object Main {
 
@@ -17,21 +17,36 @@ object Main {
     @arg(doc = "example: 1.1.1.1,8.8.8.8") resolver: Option[String],
     @arg(doc = "websocket port, output log via websocket, if not set, output log to cmd") websocketPort: Option[Int],
   ): Unit = {
+    var config = AppConfig.load()
+
     val dnsPairs = dns.map { d =>
       val Array(ip, domain) = d.split(':')
       domain -> ip
     }
+    val jksConf = (jksPath, jksPassword) match {
+      case (Some(path), Some(password)) => Some(JKSConf(path, password))
+      case _ => None
+    }
+    config = config
+      .copy(
+        dns = dnsPairs.map((domain,ip) => DNS(ip= ip ,domain = domain)),
+        resolver = resolver.map(_.split(',').toList).getOrElse(config.resolver),
+        jks = jksConf.orElse(config.jks),
+        viewerPort = websocketPort.orElse(config.viewerPort),
+      )
 
-    resolver.foreach(CustomDnsResolver.setResolver)
+    if(config.resolver.nonEmpty) {
+      CustomDnsResolver.setResolver(config.resolver)
+    }
 
-    dnsPairs.foreach(CustomDnsResolver.addMapping)
+    config.dns.foreach(d => CustomDnsResolver.addMapping(d.domain,d.ip))
 
     given actorSystem: ActorSystem = ActorSystem()
     import actorSystem.dispatcher
 
-    val func = websocketPort match {
+    val func = config.viewerPort match {
       case Some(port) =>
-        val logWebViewer = LogWebViewer()
+        val logWebViewer = LogWebViewer(config.selfSignedCert)
         logWebViewer.startServer(port) onComplete {
           case Failure(exception) =>
             println(s"websocket server open error: $exception")
@@ -50,12 +65,8 @@ object Main {
       case _ => (_: ServerRequest, data: String) => println(data)
     }
 
-    val jksConf = (jksPath, jksPassword) match {
-      case (Some(path), Some(password)) => Some(JKSConf(path, password))
-      case _                            => None
-    }
 
-    val proxy = ReverseProxy(jksConf, HttpRequestFormat(func))
+    val proxy = ReverseProxy(config.jks, HttpRequestFormat(func))
     import actorSystem.dispatcher
 
     val bindAndCheck = proxy.startServer()

@@ -15,6 +15,8 @@ openssl pkcs12 -export \
     -name example.com \
     -CAfile rootCA.pem \
     -caname root
+    
+# 可执行多次，将多个 p12 都到入到 jks 文件中    
 keytool -importkeystore \
     -srckeystore example.com.p12 \
     -srcstoretype PKCS12 \
@@ -22,16 +24,21 @@ keytool -importkeystore \
     -deststoretype JKS \
     -alias example.com
 
+#查看 JKS 内容
+keytool -list -v -keystore keystore.jks -storepass ${changeit}
+
 # 移除本机安装
 mkcert -uninstall 
 ```
 
 在别的机器安装
 ```shell
-# 1.拷贝rootCA.pem到指定机器上，并设置 CAROOT 环境变量
+# 1.拷贝rootCA.pem到指定机器上，并设置 CAROOT 证书 rootCA.pem
 export CAROOT=$(pwd)
 # 检查环境变量是否ok
 echo $CAROOT
 #
 mkcert -install
 ```
+
+PS: please make sure JAVA_HOME environment is correctly set. otherwise, mkcert would'n inject CA to java truststore.

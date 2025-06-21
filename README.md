@@ -7,11 +7,7 @@ It's mitm http/https proxy. It outputs the https request and response for test.
 3. https certificate.
 
 If you want to install self-signed certificate, you could use [mkcert](https://github.com/FiloSottile/mkcert) to do this.
-```shell
-mkcert -install
-mkcert -key-file ssl.key -cert-file ssl.cer www.example.com *.example.com
-```
-PS: please make sure JAVA_HOME environment is correctly set. otherwise, mkcert would'n inject CA to java truststore.
+more info can be found here [mkcert.md](./mkcert.zh.md)
 
 ### Usage
 If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 

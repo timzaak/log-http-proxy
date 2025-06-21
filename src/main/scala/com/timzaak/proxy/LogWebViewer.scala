@@ -9,9 +9,10 @@ import sttp.tapir.*
 import sttp.tapir.model.ServerRequest
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
 
+import java.io.File
 import scala.concurrent.Future
 
-class LogWebViewer(using system: ActorSystem) {
+class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
 
   import system.dispatcher
 
@@ -28,12 +29,20 @@ class LogWebViewer(using system: ActorSystem) {
   }
 
   private val viewerEndpoint = endpoint.get
-    .in("viewer")
+    .in("")
     .in(extractFromRequest(identity))
     .out(htmlBodyUtf8)
     .serverLogicSuccess { request =>
       val ip = extractClientIP(request)
-
+      val certDesc = certPath match {
+        case Some(_) =>
+          s"""<p>You should register the self signed rootCA.pem . </p>
+             |<p>1. download <a href="./rootCA></a>">rootCA.pem</a> and install <a href="https://github.com/FiloSottile/mkcert?tab=readme-ov-file#installation">mkcert</a></p>
+             |<p>set environment $$CAROOT to rootCA.pem directory</p>
+             |run mkcert -install
+             |""".stripMargin
+        case _ => ""
+      }
       val htmlContent = s"""<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -72,13 +81,14 @@ class LogWebViewer(using system: ActorSystem) {
         <li>Windows/Linux: Ctrl+Shift+J</li>
         <li>macOS: Cmd+Option+J</li>
     </ul>
+    $certDesc
 </body>
 </html>
 """
       Future.successful(htmlContent)
     }
 
-  private val handler = endpoint.get
+  private val wsHandler = endpoint.get
     .in("api_ws")
     .in(query[String]("ip"))
     .out(webSocketBody[String, CodecFormat.TextPlain, String, CodecFormat.TextPlain](PekkoStreams))
@@ -99,8 +109,28 @@ class LogWebViewer(using system: ActorSystem) {
       Future.successful(flow)
     }
 
+  private val downloadCA = endpoint.get
+    .in("rootCA")
+    .errorOut(stringBody)
+    .out(fileBody)
+    .out(header[String]("Content-Disposition"))
+    .serverLogic { _ =>
+      val result = certPath match {
+        case Some(certPath) =>
+          val file = File(certPath)
+          if (file.exists()) {
+            Right((file, "attachment; filename=\"rootCA.pem\""))
+          } else {
+            Left(s"path:$certPath not found")
+          }
+        case None =>
+          Left("rootCA.pem not found")
+      }
+      Future.successful(result)
+    }
+
   def startServer(port: Int) = {
-    val routes = PekkoHttpServerInterpreter().toRoute(List(handler, viewerEndpoint))
+    val routes = PekkoHttpServerInterpreter().toRoute(List(wsHandler, viewerEndpoint, downloadCA))
     val bindAndCheck = Http()
       .newServerAt("0.0.0.0", port)
       .bindFlow(routes)

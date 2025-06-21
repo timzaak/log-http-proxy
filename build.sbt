@@ -1,10 +1,7 @@
 val scala3Version = "3.7.1"
 import Dependencies.*
 
-
-
 Universal / packageName := "app"
-
 
 // delete all bin except server
 Universal / mappings := {
@@ -13,7 +10,6 @@ Universal / mappings := {
     !(name.startsWith("bin/") && name != "bin/app")
   }
 }
-
 
 lazy val root = project
   .in(file("."))
@@ -27,6 +23,8 @@ lazy val root = project
         Seq(
           "com.lihaoyi" %% "mainargs" % "0.7.6",
           "com.github.pathikrit" %% "better-files" % "3.9.2",
-          "dnsjava"% "dnsjava"% "3.6.3",
-          "org.scalameta" %% "munit" % "1.1.1" % Test)
-  ).enablePlugins(JavaServerAppPackaging)
+          "dnsjava" % "dnsjava" % "3.6.3",
+          "org.scalameta" %% "munit" % "1.1.1" % Test
+        )
+  )
+  .enablePlugins(JavaServerAppPackaging)

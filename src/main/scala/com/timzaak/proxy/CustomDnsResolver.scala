@@ -1,10 +1,10 @@
 package com.timzaak.proxy
 
 import com.timzaak.proxy.CustomDnsResolver.customMappings
-import org.xbill.DNS.{Address, ExtendedResolver, Lookup, ResolverConfig}
+import org.xbill.DNS.{ Address, ExtendedResolver, Lookup, ResolverConfig }
 
 import java.net.InetAddress
-import java.net.spi.{InetAddressResolver, InetAddressResolverProvider}
+import java.net.spi.{ InetAddressResolver, InetAddressResolverProvider }
 import java.util
 import java.util.concurrent.ConcurrentHashMap
 import java.util.stream
@@ -12,7 +12,7 @@ import scala.jdk.CollectionConverters.*
 
 object CustomDnsResolver {
   private val customMappings = new ConcurrentHashMap[String, String]()
-  private var resolver:Option[ExtendedResolver] = None
+  private var resolver: Option[ExtendedResolver] = None
 
   def addMapping(host: String, ip: String): Unit = {
     customMappings.put(host, ip)
@@ -25,9 +25,9 @@ object CustomDnsResolver {
     Option(customMappings.get(host))
   }
 
-  def setResolver(resolvers: String) = {
+  def setResolver(resolvers: List[String]) = {
     ResolverConfig.refresh()
-    val r = ExtendedResolver(resolvers.split(','))
+    val r = ExtendedResolver(resolvers.toArray)
     r.setIgnoreTruncation(true)
     Lookup.setDefaultResolver(r)
     Lookup.setDefaultHostsFileParser(null)
@@ -39,7 +39,10 @@ object CustomDnsResolver {
 class CustomDnsResolver extends InetAddressResolverProvider {
 
   private val resolver = new InetAddressResolver {
-    override def lookupByName(host: String, lookupPolicy: InetAddressResolver.LookupPolicy): stream.Stream[InetAddress] = {
+    override def lookupByName(
+      host: String,
+      lookupPolicy: InetAddressResolver.LookupPolicy
+    ): stream.Stream[InetAddress] = {
       Option(customMappings.get(host)) match {
         case Some(ip) =>
           Seq(InetAddress.getByAddress(host, InetAddress.getByName(ip).getAddress)).asJava.stream()
