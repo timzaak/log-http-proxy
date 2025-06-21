@@ -17,28 +17,27 @@ object Dependencies {
     )
   }
 
-  lazy val tapir = {
-    val version = "1.11.33"
+  lazy val pekkoHttp = {
+    val pekkoHttpVersion = "1.0.1" // Or the specific version you intend to use
+    val pekkoVersion = "1.0.3" // Or the specific version for Pekko core
+    Seq(
+      "org.apache.pekko" %% "pekko-http" % pekkoHttpVersion,
+      "org.apache.pekko" %% "pekko-stream" % pekkoVersion,
+      "org.apache.pekko" %% "pekko-actor-typed" % pekkoVersion,
+      // Add other Pekko modules if needed, e.g., pekko-http-spray-json for JSON support
+    )
+  }
+
+  // Circe dependencies, potentially for JSON handling within Pekko HTTP if not using pekko-http-spray-json
+  lazy val circe = {
     val circeVersion = "0.14.9"
     Seq(
       "io.circe" %% "circe-core",
       "io.circe" %% "circe-generic",
       "io.circe" %% "circe-parser",
-    ).map(_ % circeVersion) ++
-      Seq(
-        "io.circe" %% "circe-optics" % "0.15.1",
-        // "com.softwaremill.sttp.tapir" %% "tapir-netty-server" % version,
-        "com.softwaremill.sttp.tapir" %% "tapir-pekko-http-server" % version,
-        //"com.softwaremill.sttp.tapir" %% "tapir-json-circe" % version,
-        // docs
-        //"com.softwaremill.sttp.tapir" %% "tapir-redoc-bundle" % version,
-        // static file
-        //"com.softwaremill.sttp.tapir" %% "tapir-files" % version,
-        //"com.softwaremill.sttp.tapir" %% "tapir-enumeratum" % version,
-        // monitor, you could use openTelemetry java agent to solve metrics collector.
-        // "com.softwaremill.sttp.tapir" %% "tapir-opentelemetry-metrics" % version,
-      )
+    ).map(_ % circeVersion) ++ Seq("io.circe" %% "circe-optics" % "0.15.1")
   }
+
 
   lazy val configLib = {
     Seq(

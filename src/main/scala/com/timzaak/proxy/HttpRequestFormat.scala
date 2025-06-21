@@ -1,14 +1,18 @@
 package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
+import org.apache.pekko.http.scaladsl.model.*
+import org.apache.pekko.http.scaladsl.model.headers.HttpEncodings
 import org.apache.pekko.http.scaladsl.coding.Coders
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.*
 import org.apache.pekko.util.ByteString
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client4.Response
-import sttp.model.{ Header, MediaType, Method }
-import sttp.tapir.model.ServerRequest
+// Import sttp.model.MediaType if it's still needed for response content type parsing,
+// otherwise rely on Pekko's ContentType and MediaType
+import sttp.model.{Header => SttpHeader, MediaType => SttpMediaType}
+
 
 import java.time.format.DateTimeFormatter
 import java.time.LocalDateTime
@@ -17,24 +21,33 @@ import java.util.concurrent.atomic.AtomicLong
 private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
 
 class Record(
-  id: Long,
-  serverRequest: ServerRequest,
-  log: (ServerRequest, String) => Unit,
+    id: Long,
+    pekkoRequest: HttpRequest,
+    log: (HttpRequest, String) => Unit,
 )(using
-  actorSystem: ActorSystem
+    actorSystem: ActorSystem
 ) {
   import actorSystem.dispatcher
+  given Materializer = Materializer(actorSystem)
 
   private val startTime: LocalDateTime = LocalDateTime.now()
   private val buf = StringBuffer()
 
-  def requestBody(req: ServerRequest, body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
-    val headerDesc = req.headers
-      .collect { case header =>
-        s"  ${header.name}: ${header.value}"
+  // Helper to determine if content type is text-based
+  private def isTextBased(contentType: ContentType): Boolean = {
+    val mediaType = contentType.mediaType
+    mediaType.isApplication || mediaType.isText || mediaType.isMessage || mediaType.isMultipart || mediaType.mainType == "json" // common case for application/json
+  }
+
+  def logRequest(): Unit = {
+    val headerDesc = pekkoRequest.headers
+      .map { header =>
+        s"  ${header.name()}: ${header.value()}"
       }
       .mkString("\n")
-    buf.append(s"${startTime.format(dateTimeFormatter)} [$id] ${req.method} ${req.uri} ##TIME##\n")
+    buf.append(
+      s"${startTime.format(dateTimeFormatter)} [$id] ${pekkoRequest.method.value} ${pekkoRequest.uri} ##TIME##\n"
+    )
     if (headerDesc.nonEmpty) {
       buf.append(headerDesc)
       buf.append("\nBody:\n")
@@ -42,30 +55,45 @@ class Record(
       buf.append("Body:\n")
     }
 
-    req.method match {
-      case Method.POST | Method.PUT | Method.PATCH if !req.contentLength.contains(0) =>
-        req.contentTypeParsed match {
-          case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
-            body.alsoTo(
-              Sink
-                .foreach[ByteString](v => buf.append(v.utf8String))
-                .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
-            )
-          case _ =>
-            body.alsoTo(
-              Sink.ignore.mapMaterializedValue(_.onComplete(_ => buf.append("[request body can not parser]\n")))
-            )
+    // Request body will be logged as it's streamed in getProcessedRequestBody
+    // Only indicate here if it's expected to have a body or not for clarity in the log
+    pekkoRequest.method match {
+      case HttpMethods.POST | HttpMethods.PUT | HttpMethods.PATCH if pekkoRequest.entity.contentLengthOption.forall(_ > 0) =>
+        if (!isTextBased(pekkoRequest.entity.contentType)) {
+          buf.append("[request body is binary or non-text, will not be logged as string]\n")
         }
+        // Actual body content is logged by getProcessedRequestBody by tapping into the stream
       case _ =>
-        body
+        // For GET, DELETE, etc., or empty bodies, no specific body logging needed here
+        buf.append("[no request body or method does not typically have a body]\n")
     }
   }
 
-  def responseBody(resp: Response[?], body: PekkoStreams.BinaryStream)(using
-    org.apache.pekko.stream.Materializer
-  ): PekkoStreams.BinaryStream = {
+  // This method is called before sending the request to the backend,
+  // so it returns the entity to be used in the outgoing sttp request.
+  def getProcessedRequestBody(originalBody: Source[ByteString, Any]): Source[ByteString, Any] = {
+    pekkoRequest.method match {
+      case HttpMethods.POST | HttpMethods.PUT | HttpMethods.PATCH if pekkoRequest.entity.contentLengthOption.forall(_ > 0) =>
+        if (isTextBased(pekkoRequest.entity.contentType)) {
+          // Log the body as it passes through
+          originalBody.alsoTo(
+            Sink
+              .foreach[ByteString](bs => buf.append(bs.utf8String))
+              .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
+          )
+        } else {
+          // For non-text, just pass through, already indicated it won't be logged in detail.
+          originalBody
+        }
+      case _ =>
+        originalBody // Pass through for GET, etc.
+    }
+  }
+
+
+  def logResponse(resp: Response[?], body: PekkoStreams.BinaryStream): PekkoStreams.BinaryStream = {
     val headerDesc = resp.headers
-      .collect { case header =>
+      .map { header => // Assuming resp.headers are sttp.model.Header
         s"  ${header.name}: ${header.value}"
       }
       .mkString("\n")
@@ -76,63 +104,58 @@ class Record(
     } else {
       buf.append("Body:\n")
     }
-    val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
-      case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
-        body.alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String)).mapMaterializedValue {
-          _.onComplete { _ =>
-            output()
-          }
-        })
-        /*
-        resp
-          .header("content-encoding")
-          .flatMap(encoding => List(Coders.Gzip, Coders.Deflate).find(_.encoding.value == encoding)) match {
-          case Some(decompressor) =>
-            body.alsoTo(
-              Flow[ByteString]
-                .fold(ByteString.empty)(_ ++ _)
-                .mapAsync(1)(v =>
-                  decompressor
-                    .decode(v)
-                    .map(v => buf.append(v.utf8String))
-                )
-                .to(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
-                  output()
-                }))
-            )
-          case None =>
-            body.alsoTo(
-              Sink
-                .foreach[ByteString](v => buf.append(v.utf8String))
-                .mapMaterializedValue(_.onComplete{_ =>
-                  buf.append("\n")
-                  output()
-                })
-            )
+
+    // Try to parse content type from sttp Response
+    val contentTypeOpt = resp.contentType.flatMap(SttpMediaType.parse(_).toOption)
+
+    contentTypeOpt match {
+      case Some(ct) if ct.isText || ct.isApplication || ct.isMessage || ct.isMultipart || ct.mainType == "json" =>
+        // Check for content encoding and decode if necessary
+        resp.header(Header.CONTENT_ENCODING) match {
+          case Some(encodingValue) =>
+            val decoder = encodingValue.toLowerCase match {
+              case "gzip" => Coders.Gzip
+              case "deflate" => Coders.Deflate
+              case _ => Coders.NoCoding // Or handle as an error/unsupported
+            }
+            if (decoder != Coders.NoCoding) {
+               body.via(decoder.decoderFlow).alsoTo(Sink.foreach[ByteString](bs => buf.append(bs.utf8String)).mapMaterializedValue {
+                _.onComplete { _ => output() }
+              })
+            } else { // Unknown encoding or NoCoding
+              body.alsoTo(Sink.foreach[ByteString](bs => buf.append(bs.utf8String)).mapMaterializedValue {
+                _.onComplete { _ => output() }
+              })
+            }
+          case None => // No content encoding
+            body.alsoTo(Sink.foreach[ByteString](bs => buf.append(bs.utf8String)).mapMaterializedValue {
+              _.onComplete { _ => output() }
+            })
         }
-         */
-      case _ =>
+      case _ => // Non-text or unknown content type
         body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
-          buf.append(s"[response body can not parser]\n")
+          buf.append(s"[response body not logged or binary]\n")
           output()
         }))
     }
-    newBody
   }
+
   private def output(): Unit = {
     val now = LocalDateTime.now()
     val duration = java.time.Duration.between(startTime, now)
-    log(serverRequest, buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
+    log(pekkoRequest, buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
   }
-
 }
 
 class HttpRequestFormat(
-  log: (ServerRequest, String) => Unit = (_, body) => println(body),
+    log: (HttpRequest, String) => Unit = (_, body) => println(body),
 )(using ec: ActorSystem) {
 
   var index: AtomicLong = AtomicLong(0)
 
-  def beginRecord(req: ServerRequest): Record =
-    Record(index.incrementAndGet(), req, log)(using ec)
+  def beginRecord(req: HttpRequest): Record = {
+    val record = Record(index.incrementAndGet(), req, log)(using ec)
+    record.logRequest() // Initial logging of request headers and potentially body if not streamed
+    record
+  }
 }
