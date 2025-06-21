@@ -7,7 +7,6 @@ import org.apache.pekko.stream.scaladsl.*
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.tapir.*
 import sttp.tapir.model.ServerRequest
-import sttp.model.StatusCode
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
 
 import scala.concurrent.Future
@@ -18,7 +17,7 @@ class LogWebViewer(using system: ActorSystem) {
 
   private val manager = system.actorOf(Props[ConnectionManager]())
 
-  def extractClientIP(request:ServerRequest) = request
+  def extractClientIP(request: ServerRequest) = request
     .header("X-Forwarded-For")
     .orElse(request.header("Remote-Address").map(v => v.take(v.lastIndexOf(':'))))
     .getOrElse(request.connectionInfo.remote.map(_.getAddress.getHostAddress).getOrElse(""))
@@ -112,10 +111,12 @@ class LogWebViewer(using system: ActorSystem) {
 class ConnectionManager extends Actor {
   private val connections = scala.collection.mutable.Map[String, ActorRef]()
   override def receive: Receive = {
-    case (key: String, data: String)  => connections.get(key).foreach(ref => data.trim.split('\n').foreach(ref ! _))
+    case (key: String, data: String) =>
+      // connections.get(key).foreach(ref => data.trim.split('\n').foreach(ref ! _))
+      connections.get(key).foreach(_ ! data)
     case (key: String, ref: ActorRef) => connections.addOne(key -> ref)
     case key: String                  =>
-      println(s"close ${key}")
+      println(s"websocket close $key")
       connections.remove(key).foreach(_ ! PoisonPill)
   }
 }

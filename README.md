@@ -20,13 +20,10 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 ```shell
 # run with sbt
 
-sbt "runMain Main --dns=192.168.3.3:www.example.com --jksPath=jks.jks --jksPassword=123456 --websocketPort=9000"
-
-# run websocket client to get log, ip is a filter to filter request
-websocat ws://127.0.0.1:9000/api_ws?ip=127.0.0.1
-# or just open your browser to access http://127.0.0.1:9000/viewer
+sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --websocketPort=9000"
+# open your browser to access http://127.0.0.1:9000/viewer
 ```
-[websocat](https://github.com/vi/websocat) is a websocket command line. and the params are:
+The params are:
 
 * dns: A list of domain-to-IP mappings in the format ip:domain. These mappings will be added to the DNS resolver.
 * jksPath: An optional path to a JKS file for SSL/TLS configuration.

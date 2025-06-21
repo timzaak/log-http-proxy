@@ -15,7 +15,7 @@ class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using ac
 
   private val backend = PekkoHttpBackend.usingActorSystem(actorSystem)
 
-  private val proxyReq = basicRequest.disableAutoDecompression
+  private val proxyReq = basicRequest//.disableAutoDecompression because of https encode/decode
 
   private val proxyEndpoint = endpoint
     .in(extractFromRequest(identity))
@@ -31,7 +31,7 @@ class ReverseProxy(jksConf: Option[JKSConf], output: HttpRequestFormat)(using ac
         .response(asStreamAlwaysUnsafe(PekkoStreams))
         .send(backend)
       result.map { result =>
-        result.headers.toList /*.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding))*/ -> record
+        result.headers.toList.filterNot(_.name.equalsIgnoreCase(HeaderNames.ContentEncoding)) -> record
           .responseBody(result, result.body)
       }
     }

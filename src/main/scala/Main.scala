@@ -72,7 +72,7 @@ object Main {
           buf.append(s"dns resolver:\nSystem DNS Resolver\n")
         }
         buf.append(
-          s"Attention: request header Accept-Encoding would override to gzip, deflate (pekko does not support brotli)\n"
+          s"Attention: request header Accept-Encoding would override to gzip, deflate (pekko does not support brotli), response header Content-Encoding would drop for https encode/decode\n"
         )
         println(buf.toString)
         v.whenTerminated

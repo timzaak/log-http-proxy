@@ -78,6 +78,12 @@ class Record(
     }
     val newBody = resp.contentType.flatMap(MediaType.parse(_).toOption) match {
       case Some(v) if v.isText || v.isApplication || v.isMessage || v.isMultipart =>
+        body.alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String)).mapMaterializedValue {
+          _.onComplete { _ =>
+            output()
+          }
+        })
+        /*
         resp
           .header("content-encoding")
           .flatMap(encoding => List(Coders.Gzip, Coders.Deflate).find(_.encoding.value == encoding)) match {
@@ -104,6 +110,7 @@ class Record(
                 })
             )
         }
+         */
       case _ =>
         body.alsoTo(Sink.ignore.mapMaterializedValue(_.onComplete { _ =>
           buf.append(s"[response body can not parser]\n")
