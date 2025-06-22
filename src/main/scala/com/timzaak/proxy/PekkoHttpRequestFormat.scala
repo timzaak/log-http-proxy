@@ -1,19 +1,19 @@
 package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.model.{HttpMethods, HttpRequest, HttpResponse}
+import org.apache.pekko.http.scaladsl.unmarshalling.{MultipartUnmarshallers, Unmarshaller}
+import org.apache.pekko.http.scaladsl.model.Multipart.FormData
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse, Multipart}
 import org.apache.pekko.stream.scaladsl.{Flow, Sink}
 import org.apache.pekko.util.ByteString
-/*
-import org.apache.pekko.http.scaladsl.*
-import org.apache.pekko.http.scaladsl.server.Directives.*
-import org.apache.pekko.http.scaladsl.model.*
-import org.apache.pekko.stream.scaladsl.*
-import org.apache.pekko.util.ByteString
- */
+import org.apache.pekko.stream.Materializer
+
+import scala.util.{Failure, Success}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.atomic.AtomicLong
+
+
 
 case class Record2(
   id: Long,
@@ -47,7 +47,6 @@ case class Record2(
         req.entity.contentType.mediaType match {
           case mediaType
             if mediaType.isText || mediaType.isApplication || mediaType.isMessage || mediaType.isMultipart =>
-
             req.withEntity(
               req.entity.transformDataBytes(
                 Flow[ByteString].alsoTo(
@@ -57,7 +56,6 @@ case class Record2(
                 )
               )
             )
-
           case _ =>
             req.withEntity(
               req.entity.transformDataBytes(
@@ -89,17 +87,27 @@ case class Record2(
     resp.entity.contentType.mediaType match {
       case mediaType if mediaType.isText || mediaType.isApplication || mediaType.isMessage || mediaType.isMultipart =>
         resp.withEntity(
-          resp.entity.transformDataBytes(Flow[ByteString].alsoTo(Sink.foreach[ByteString](v => buf.append(v.utf8String))))
-
+          resp.entity.transformDataBytes(
+            Flow[ByteString].alsoTo(
+              Sink
+                .foreach[ByteString](v => buf.append(v.utf8String))
+                .mapMaterializedValue(_.onComplete(_ => {
+                  buf.append(s"[response body can not parser]\n")
+                  output()
+                }))
+            )
+          )
         )
       case _ =>
         resp.withEntity(
-          resp.entity.transformDataBytes(Flow[ByteString].alsoTo(
-            Sink.ignore.mapMaterializedValue(_.onComplete(_ => {
-              buf.append(s"[response body can not parser]\n")
-              output()
-            }))
-          ))
+          resp.entity.transformDataBytes(
+            Flow[ByteString].alsoTo(
+              Sink.ignore.mapMaterializedValue(_.onComplete(_ => {
+                buf.append(s"[response body can not parser]\n")
+                output()
+              }))
+            )
+          )
         )
     }
   }

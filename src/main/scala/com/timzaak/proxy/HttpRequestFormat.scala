@@ -1,13 +1,11 @@
 package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.coding.Coders
-import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.*
 import org.apache.pekko.util.ByteString
 import sttp.capabilities.pekko.PekkoStreams
 import sttp.client4.Response
-import sttp.model.{ Header, MediaType, Method }
+import sttp.model.{ MediaType, Method }
 import sttp.tapir.model.ServerRequest
 
 import java.time.format.DateTimeFormatter

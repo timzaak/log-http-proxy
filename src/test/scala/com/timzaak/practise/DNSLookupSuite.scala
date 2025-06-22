@@ -26,7 +26,7 @@ class DNSLookupSuite extends FunSuite {
 
 
   test("ip") {
-    CustomDnsResolver.setResolver("114.114.114.114")
+    CustomDnsResolver.setResolver(List("114.114.114.114"))
     val z = Address.getAllByName("www.example.com")
     z.foreach(println)
   }

@@ -34,6 +34,7 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
   def call2(request:HttpRequest, data:String) = {
 
     val ip = request.header[XForwardedFor].map(_.value)
+      .orElse(request.header[org.apache.pekko.http.javadsl.model.headers.RemoteAddress].map(v => v.value.take(v.value.lastIndexOf(':'))))
       .orElse(request.attribute[RemoteAddress](AttributeKeys.remoteAddress).flatMap(_.toIP.map(_.ip.getHostAddress)))
       .getOrElse("")
 
@@ -48,10 +49,10 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
       val ip = extractClientIP(request)
       val certDesc = certPath match {
         case Some(_) =>
-          s"""<p>You should register the self signed rootCA.pem . </p>
-             |<p>1. download <a href="./rootCA></a>">rootCA.pem</a> and install <a href="https://github.com/FiloSottile/mkcert?tab=readme-ov-file#installation">mkcert</a></p>
-             |<p>set environment $$CAROOT to rootCA.pem directory</p>
-             |run mkcert -install
+          s"""<p>the server use self signed cert, you may need to register the self signed rootCA.pem to your system. </p>
+             |<p>1. download <a target="_blank" href="./rootCA">rootCA.pem</a> and install <a target="_blank" href="https://github.com/FiloSottile/mkcert?tab=readme-ov-file#installation">mkcert</a></p>
+             |<p>2. set environment $$CAROOT to rootCA.pem directory</p>
+             |<p>3. run the command:     mkcert -install</p>
              |""".stripMargin
         case _ => ""
       }
