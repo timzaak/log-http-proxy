@@ -1,7 +1,7 @@
 package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse, Multipart}
+import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse}
 import org.apache.pekko.stream.Materializer
 import org.apache.pekko.stream.scaladsl.{Flow, Framing, Sink}
 import org.apache.pekko.util.ByteString
