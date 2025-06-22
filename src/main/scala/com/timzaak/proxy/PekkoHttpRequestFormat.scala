@@ -1,17 +1,15 @@
 package com.timzaak.proxy
 
 import org.apache.pekko.actor.ActorSystem
-import org.apache.pekko.http.scaladsl.unmarshalling.{MultipartUnmarshallers, Unmarshaller}
-import org.apache.pekko.http.scaladsl.model.Multipart.FormData
 import org.apache.pekko.http.scaladsl.model.{HttpEntity, HttpMethods, HttpRequest, HttpResponse, Multipart}
-import org.apache.pekko.stream.scaladsl.{Flow, Sink}
-import org.apache.pekko.util.ByteString
 import org.apache.pekko.stream.Materializer
+import org.apache.pekko.stream.scaladsl.{Flow, Framing, Sink}
+import org.apache.pekko.util.ByteString
 
-import scala.util.{Failure, Success}
 import java.time.LocalDateTime
 import java.time.format.DateTimeFormatter
 import java.util.concurrent.atomic.AtomicLong
+import scala.concurrent.{ExecutionContext, Future}
 
 
 
@@ -117,6 +115,51 @@ case class Record2(
     val duration = java.time.Duration.between(startTime, now)
     log(serverRequest, buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
   }
+
+
+  private def parseMultipartStreamed(boundary:String, buf: StringBuffer)(using ec: ExecutionContext, mat: Materializer) = {
+    val delimiter = s"--$boundary"
+    val closeDelimiter = s"--$boundary--"
+
+    def splitHeaderAndBody(part: ByteString): (ByteString, ByteString, Int) = {
+      val sep = ByteString("\r\n\r\n")
+      val idx = part.indexOfSlice(sep)
+      if (idx >= 0) {
+        val (headers, rest) = part.splitAt(idx)
+        (headers, rest.drop(sep.length), idx)
+      } else {
+        (ByteString.empty, part, idx + sep.length)
+      }
+    }
+    Flow[ByteString]
+      .via(Framing.delimiter(ByteString("\r\n"), maximumFrameLength = 8192, allowTruncation = true))
+      .drop(1)
+      .mapAsync(1) { part =>
+        val partCleaned = if (part.startsWith(ByteString("\r\n"))) {
+          buf.append("\r\n")
+          part.drop(2)
+        } else {
+          part
+        }
+
+        // 拆解 header 和 body
+        val (headerBytes, bodyBytes, idx) = splitHeaderAndBody(partCleaned)
+
+        val headersStr = headerBytes.utf8String
+        val isFilePart = headersStr.contains("filename=")
+
+        if (!isFilePart) {
+          buf.append(partCleaned.utf8String)
+        } else {
+          buf.append(partCleaned.take(idx).utf8String)
+          buf.append("[file body, skip log]\n")
+        }
+        Future.successful(())
+      }
+
+
+  }
+
 
 }
 
