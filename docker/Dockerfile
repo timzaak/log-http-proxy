@@ -9,4 +9,4 @@ RUN ln -sf /usr/share/zoneinfo/Asia/Shanghai /etc/localtime \
 
 RUN apk update && apk add --no-cache bash
 
-COPY ./app /server/
+COPY ./target/universal/stage/ /server/
