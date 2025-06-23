@@ -7,7 +7,7 @@ It's mitm http/https proxy. It outputs the https request and response for test.
 3. https certificate.
 
 If you want to install self-signed certificate, you could use [mkcert](https://github.com/FiloSottile/mkcert) to do this.
-more info can be found here [mkcert.md](./mkcert.zh.md)
+more info can be found here [mkcert.md](mkcert.md)
 
 ### Usage
 If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 
