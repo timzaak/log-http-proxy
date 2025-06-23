@@ -61,12 +61,10 @@ object Main {
                 println(s"websocket server close")
             }
         }
-        logWebViewer.call2
+        logWebViewer.call
       case _ => (_: Any, data: String) => println(data)
     }
 
-
-    //val proxy = ReverseProxy(config.jks, HttpRequestFormat(func))
     val proxy = PekkoReverseProxy(config.jks, PekkoHttpRequestFormat(func))
     import actorSystem.dispatcher
 
@@ -84,7 +82,7 @@ object Main {
           buf.append(s"dns resolver:\nSystem DNS Resolver\n")
         }
         buf.append(
-          s"Attention: request header Accept-Encoding would override to gzip, deflate (pekko does not support brotli), response header Content-Encoding would drop for https encode/decode\n"
+          s"Attention: request header Accept-Encoding would override to gzip, deflate (pekko does not support brotli)\n"
         )
         println(buf.toString)
         v.whenTerminated

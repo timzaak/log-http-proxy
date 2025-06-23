@@ -21,10 +21,13 @@ case class Record2(
   actorSystem: ActorSystem
 ) {
   import actorSystem.dispatcher
+  given Materializer = Materializer(actorSystem)
 
   private val dateTimeFormatter = DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss")
   private val startTime: LocalDateTime = LocalDateTime.now()
   private val buf = StringBuffer()
+
+
 
   def requestBody(req: HttpRequest): HttpRequest = {
     val headerDesc = req.headers
@@ -35,14 +38,35 @@ case class Record2(
     buf.append(s"${startTime.format(dateTimeFormatter)} [$id] ${req.method} ${req.uri} ##TIME##\n")
     if (headerDesc.nonEmpty) {
       buf.append(headerDesc)
-      buf.append("\nBody:\n")
+      buf.append(s"\nContentType: ${req.entity.contentType}\nBody:\n")
     } else {
-      buf.append("Body:\n")
+      buf.append(s"ContentType: ${req.entity.contentType}\nBody:\n")
     }
 
+
     req.method match {
-      case HttpMethods.POST | HttpMethods.PUT | HttpMethods.PATCH if req.entity.contentLengthOption.getOrElse(0L) > 0 =>
+      case v if v != HttpMethods.GET || v!= HttpMethods.OPTIONS =>
         req.entity.contentType.mediaType match {
+          case mediaType if mediaType.isMultipart =>
+            Option(mediaType.getParams.get("boundary")) match {
+              case Some(boundary) =>
+                req.withEntity(
+                  req.entity.transformDataBytes(
+                    Flow[ByteString].alsoTo(
+                      parseMultipartStreamed(boundary, buf)
+                    )
+                  )
+                )
+              case _ =>
+                req.withEntity(
+                  req.entity.transformDataBytes(
+                    Flow[ByteString].alsoTo(
+                      Sink.ignore.mapMaterializedValue(_.onComplete(_ => buf.append("[request body can not parser]\n")))
+                    )
+                  )
+                )
+            }
+
           case mediaType
             if mediaType.isText || mediaType.isApplication || mediaType.isMessage || mediaType.isMultipart =>
             req.withEntity(
@@ -50,7 +74,9 @@ case class Record2(
                 Flow[ByteString].alsoTo(
                   Sink
                     .foreach[ByteString](v => buf.append(v.utf8String))
-                    .mapMaterializedValue(_.onComplete(_ => buf.append("\n")))
+                    .mapMaterializedValue(_.onComplete{_ =>
+                      buf.append("\n")
+                    })
                 )
               )
             )
@@ -77,9 +103,9 @@ case class Record2(
     buf.append(s"Response: ${resp.status}\n")
     if (headerDesc.nonEmpty) {
       buf.append(headerDesc)
-      buf.append("\nBody:\n")
+      buf.append(s"\nContentType: ${resp.entity.contentType}\nBody:\n")
     } else {
-      buf.append("Body:\n")
+      buf.append(s"ContentType: ${resp.entity.contentType}\nBody:\n")
     }
 
     resp.entity.contentType.mediaType match {
@@ -90,7 +116,6 @@ case class Record2(
               Sink
                 .foreach[ByteString](v => buf.append(v.utf8String))
                 .mapMaterializedValue(_.onComplete(_ => {
-                  buf.append(s"[response body can not parser]\n")
                   output()
                 }))
             )
@@ -116,7 +141,6 @@ case class Record2(
     log(serverRequest, buf.toString.replaceFirst("##TIME##", s"${duration.toMillis}ms"))
   }
 
-
   private def parseMultipartStreamed(boundary:String, buf: StringBuffer)(using ec: ExecutionContext, mat: Materializer) = {
     val delimiter = s"--$boundary"
     val closeDelimiter = s"--$boundary--"
@@ -134,30 +158,29 @@ case class Record2(
     Flow[ByteString]
       .via(Framing.delimiter(ByteString("\r\n"), maximumFrameLength = 8192, allowTruncation = true))
       .drop(1)
-      .mapAsync(1) { part =>
-        val partCleaned = if (part.startsWith(ByteString("\r\n"))) {
+      .statefulMapConcat { () =>
+        var needSkip = false
+        var isFile = false
+        (line:ByteString) => {
           buf.append("\r\n")
-          part.drop(2)
-        } else {
-          part
+          if(needSkip) {
+            buf.append("[file content skip log]")
+            needSkip = false
+          } else if(line.isEmpty) {
+            if(isFile){
+              needSkip = true
+              isFile = false
+            }
+            buf.append(line.utf8String)
+          } else {
+            if(line.utf8String.contains("filename=")) {
+              isFile = true
+            }
+            buf.append(line.utf8String)
+          }
         }
-
-        // 拆解 header 和 body
-        val (headerBytes, bodyBytes, idx) = splitHeaderAndBody(partCleaned)
-
-        val headersStr = headerBytes.utf8String
-        val isFilePart = headersStr.contains("filename=")
-
-        if (!isFilePart) {
-          buf.append(partCleaned.utf8String)
-        } else {
-          buf.append(partCleaned.take(idx).utf8String)
-          buf.append("[file body, skip log]\n")
-        }
-        Future.successful(())
-      }
-
-
+        List.empty
+      }.to(Sink.ignore.mapMaterializedValue(_.onComplete(_ => buf.append("\n"))))
   }
 
 

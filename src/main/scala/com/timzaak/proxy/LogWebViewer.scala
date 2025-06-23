@@ -26,13 +26,7 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
     .orElse(request.header("Remote-Address").map(v => v.take(v.lastIndexOf(':'))))
     .getOrElse(request.connectionInfo.remote.map(_.getAddress.getHostAddress).getOrElse(""))
 
-  def call(request: ServerRequest, data: String) = {
-    val ip = extractClientIP(request)
-    manager ! ip -> data
-  }
-
-  def call2(request:HttpRequest, data:String) = {
-
+  def call(request:HttpRequest, data:String) = {
     val ip = request.header[XForwardedFor].map(_.value)
       .orElse(request.header[org.apache.pekko.http.javadsl.model.headers.RemoteAddress].map(v => v.value.take(v.value.lastIndexOf(':'))))
       .orElse(request.attribute[RemoteAddress](AttributeKeys.remoteAddress).flatMap(_.toIP.map(_.ip.getHostAddress)))
