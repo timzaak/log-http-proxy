@@ -71,7 +71,7 @@ jobs:
           mkdir -p compressed_artifacts
           cd artifacts                  
           zip -r ../compressed_artifacts/log-http-proxy-macos-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-macos-*
-          zip -r ../compressed_artifacts/log-http-proxy-ubuntu-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-ubuntu-*
+          zip -r ../compressed_artifacts/log-http-proxy-linux-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-linux-*
           zip -r ../compressed_artifacts/log-http-proxy-windows-${{ needs.build_and_push.outputs.version }}.zip log-http-proxy-windows-*
 
       - name: Create Draft Release and Upload Assets
