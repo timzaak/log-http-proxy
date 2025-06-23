@@ -35,3 +35,4 @@ package
 local_dist.ps1
 bak
 docker/local_build.ps1
+src/main/resources/private.conf

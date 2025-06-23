@@ -42,10 +42,10 @@ case class Record2(
     } else {
       buf.append(s"ContentType: ${req.entity.contentType}\nBody:\n")
     }
-
+    
 
     req.method match {
-      case v if v != HttpMethods.GET || v!= HttpMethods.OPTIONS =>
+      case v if v != HttpMethods.GET && v!= HttpMethods.OPTIONS =>
         req.entity.contentType.mediaType match {
           case mediaType if mediaType.isMultipart =>
             Option(mediaType.getParams.get("boundary")) match {
@@ -68,7 +68,7 @@ case class Record2(
             }
 
           case mediaType
-            if mediaType.isText || mediaType.isApplication || mediaType.isMessage || mediaType.isMultipart =>
+            if mediaType.isText || mediaType.isApplication || mediaType.isMessage || req.entity.contentLengthOption.getOrElse(0) == 0 =>
             req.withEntity(
               req.entity.transformDataBytes(
                 Flow[ByteString].alsoTo(

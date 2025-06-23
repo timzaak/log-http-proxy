@@ -15,9 +15,25 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 2. run commands below:
 ```shell
 # run with sbt
-
 sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --websocketPort=9000"
-# open your browser to access http://127.0.0.1:9000/viewer
+
+
+# run with docker
+# config file would be:
+
+# jks {
+#   path=/server/config/jks.jks
+#   password=123456
+# }
+# resolver=[114.114.114.114]
+# viewerPort=9000
+# ##selfSignedCert = "" # if you use self signed cert.
+
+docker run --rm  -v ${pwd}/private.conf:/server/config/application.conf -v${pwd}/jks.jks:/server/config/jks.jks -p 443:443 -p 9000:9000 ghcr.io/timzaak/log-http-proxy:latest
+
+
+# open your browser to access http://127.0.0.1:9000
+
 ```
 The params are:
 

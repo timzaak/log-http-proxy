@@ -71,8 +71,8 @@ object Main {
     val bindAndCheck = proxy.startServer()
     Await.result(
       bindAndCheck.flatMap { v =>
-        val changedHosts = dnsPairs.map((domain, _) => s"127.0.0.1 $domain").mkString("\n")
-        val buf = StringBuffer("proxy server is up, listening 443 port.\n")
+        val changedHosts = config.dns.map( v => s"127.0.0.1 ${v.domain}").mkString("\n")
+        val buf = StringBuffer(s"proxy server is up, listening ${v.localAddress.getPort} port.\n")
         if (changedHosts.nonEmpty) {
           buf.append(s"additional host config:\n$changedHosts\n")
         }
