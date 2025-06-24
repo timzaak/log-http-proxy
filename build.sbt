@@ -5,11 +5,10 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "log-http-proxy",
-    version := "0.2.1",
+    version := "0.2.2",
     scalaVersion := scala3Version,
-    mainClass := Some("Main"),
     libraryDependencies ++=
-      tapir ++ logLib ++ httpClient ++ configLib ++
+      tapir ++ logLib ++ configLib ++
         Seq(
           "com.lihaoyi" %% "mainargs" % "0.7.6",
           "com.github.pathikrit" %% "better-files" % "3.9.2",

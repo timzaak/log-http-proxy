@@ -2,23 +2,23 @@ import sbt.*
 object Dependencies {
 
   lazy val logLib = Seq(
-    "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
+    // "com.typesafe.scala-logging" %% "scala-logging" % "3.9.5",
     "ch.qos.logback" % "logback-classic" % "1.5.18",
   )
 
   lazy val httpClient = {
-    val version = "4.0.8"
+    val version = "4.0.9"
     Seq(
       "com.softwaremill.sttp.client4" %% "core" % version,
       "com.softwaremill.sttp.client4" %% "circe" % version,
       "com.softwaremill.sttp.client4" %% "pekko-http-backend" % version,
-      "com.softwaremill.sttp.client4" %% "slf4j-backend" % version,
-      "org.bouncycastle" % "bcpkix-jdk18on" % "1.81",
+      // "com.softwaremill.sttp.client4" %% "slf4j-backend" % version,
+      // "org.bouncycastle" % "bcpkix-jdk18on" % "1.81",
     )
   }
 
   lazy val tapir = {
-    val version = "1.11.33"
+    val version = "1.11.34"
     val circeVersion = "0.14.9"
     Seq(
       "io.circe" %% "circe-core",
