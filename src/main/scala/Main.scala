@@ -1,7 +1,6 @@
 import com.timzaak.proxy.*
 import mainargs.{ParserForMethods, arg, main}
 import org.apache.pekko.actor.ActorSystem
-import sttp.tapir.model.ServerRequest
 
 import scala.concurrent.Await
 import scala.concurrent.duration.Duration
