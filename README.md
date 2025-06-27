@@ -59,7 +59,16 @@ jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar htt
 1. Request does not support brotli compression, would drop request header: Accept-Encoding.
 2. Request would drop header remote-address
 
-### TODO
-1. [ ] Generate CA file with command.
-2. [ ] Auto creates ssl certificates automatically with config.
-3. [ ] use as http/https proxy.
+
+### Another way to log
+
+```shell
+### Linux Server
+#### Windows may need use tshark to replace it.
+ssh user@remote 'tcpdump -i any -w - -U port <port>' | wireshark -k -i -
+
+
+### K8S use debug to inject and run tcpdump, then k8s exec to get tcpdump output
+kubectl debug -it <pod-name> -n <namespace> --image=nicolaka/netshoot --target=<container-name>
+
+```
