@@ -76,12 +76,13 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
             intervalId && clearInterval(intervalId);
             delete intervalId;
             console.error("WebSocket Error: ", error);
+            console.warn("Please reload browser to reconnect.");
         };
 
         socket.onclose = function(event) {
             intervalId && clearInterval(intervalId);
             delete intervalId;
-            console.log("WebSocket connection closed, please reload browser to reconnect.");
+            console.warn("WebSocket connection closed, please reload browser to reconnect.");
         };
     </script>
 </head>
