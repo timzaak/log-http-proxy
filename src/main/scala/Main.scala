@@ -14,7 +14,7 @@ object Main {
     @arg(doc = "jks file path") jksPath: Option[String],
     @arg(doc = "jks password") jksPassword: Option[String],
     @arg(doc = "example: 1.1.1.1,8.8.8.8") resolver: Option[String],
-    @arg(doc = "websocket port, output log via websocket, if not set, output log to cmd") websocketPort: Option[Int],
+    @arg(doc = "websocket port, output log via websocket, if not set, output log to cmd") viewerPort: Option[Int],
   ): Unit = {
     var config = AppConfig.load()
 
@@ -31,7 +31,7 @@ object Main {
         dns = dnsPairs.map((domain,ip) => DNS(ip= ip ,domain = domain)),
         resolver = resolver.map(_.split(',').toList).getOrElse(config.resolver),
         jks = jksConf.orElse(config.jks),
-        viewerPort = websocketPort.orElse(config.viewerPort),
+        viewerPort = viewerPort.orElse(config.viewerPort),
       )
 
     if(config.resolver.nonEmpty) {

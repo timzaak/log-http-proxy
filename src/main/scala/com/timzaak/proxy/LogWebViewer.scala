@@ -61,7 +61,10 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
         const ws_protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const ws_host = window.location.host;
         const socket = new WebSocket(`$${ws_protocol}//$${ws_host}/api_ws?ip=$${client_ip}`);
-
+        window.socket = socket
+        let intervalId = setInterval(function() {
+            socket.send("!");
+        }, 30000);
         socket.onopen = function(event) {
             console.log("WebSocket connection established, please start sending request, make sure you have changed your host config");
         };
@@ -71,10 +74,14 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
         };
 
         socket.onerror = function(error) {
+            intervalId && clearInterval(intervalId);
+            delete intervalId;
             console.error("WebSocket Error: ", error);
         };
 
         socket.onclose = function(event) {
+            intervalId && clearInterval(intervalId);
+            delete intervalId;
             console.log("WebSocket connection closed");
         };
     </script>

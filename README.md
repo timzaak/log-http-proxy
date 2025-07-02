@@ -15,7 +15,7 @@ If you want to get all requests and responses about `https://www.exmample.com (1
 2. run commands below:
 ```shell
 # run with sbt
-sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --websocketPort=9000"
+sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --viewPort=9000"
 
 
 # run with docker

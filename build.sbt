@@ -5,7 +5,7 @@ lazy val root = project
   .in(file("."))
   .settings(
     name := "log-http-proxy",
-    version := "0.2.2",
+    version := "0.2.3",
     scalaVersion := scala3Version,
     libraryDependencies ++=
       tapir ++ logLib ++ configLib ++
