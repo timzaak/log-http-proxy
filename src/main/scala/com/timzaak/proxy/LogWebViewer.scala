@@ -56,8 +56,7 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
     <meta charset="UTF-8">
     <title>Log Viewer</title>
     <script type="text/javascript">
-        // Ensure client_ip is replaced by Scala string interpolation
-        const client_ip = "$ip"; // This will be interpolated by Scala
+        const client_ip = "$ip";
         const ws_protocol = window.location.protocol === "https:" ? "wss:" : "ws:";
         const ws_host = window.location.host;
         const socket = new WebSocket(`$${ws_protocol}//$${ws_host}/api_ws?ip=$${client_ip}`);
@@ -82,7 +81,7 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
         socket.onclose = function(event) {
             intervalId && clearInterval(intervalId);
             delete intervalId;
-            console.log("WebSocket connection closed");
+            console.log("WebSocket connection closed, please reload browser to reconnect.");
         };
     </script>
 </head>
