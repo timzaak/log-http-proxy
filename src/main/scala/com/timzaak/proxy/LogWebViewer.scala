@@ -7,7 +7,6 @@ import org.apache.pekko.http.scaladsl.model.{AttributeKeys, HttpHeader, HttpRequ
 import org.apache.pekko.stream.OverflowStrategy
 import org.apache.pekko.stream.scaladsl.*
 import sttp.capabilities.pekko.PekkoStreams
-import sttp.model.HeaderNames
 import sttp.tapir.*
 import sttp.tapir.model.ServerRequest
 import sttp.tapir.server.pekkohttp.PekkoHttpServerInterpreter
