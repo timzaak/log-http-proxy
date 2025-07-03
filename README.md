@@ -35,7 +35,6 @@ docker run --rm  -v ${pwd}/private.conf:/server/config/application.conf -v${pwd}
 # open your browser to access http://127.0.0.1:9000
 
 ```
-设置 usage.png 大小
 <img src="/doc/usage.png" alt="usage" width="500" />
 
 The params are:
