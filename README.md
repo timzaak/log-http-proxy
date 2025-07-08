@@ -1,76 +1,101 @@
-## https proxy
-It's mitm http/https proxy. It outputs the https request and response for test.
+## HTTPS Proxy
+A MITM (Man-In-The-Middle) HTTP/HTTPS proxy that logs HTTPS requests and responses for debugging and testing purposes.
+### Features
+- Logs HTTPS request and response details.
+- View traffic through a browser UI.
+- Docker & CLI supported.
+- Supports custom DNS mappings and JKS SSL certificates.
+### Requirements
+1. JDK 19+
+2. HTTPS certificate and private key (in JKS format).
+3. If using self-signed certificates, consider using [mkcert](https://github.com/FiloSottile/mkcert).
 
-### Requires
-1. require JDK 19+
-2. https cert and private key
-3. https certificate.
+> 📄 more info: [mkcert.md](mkcert.md)
 
-If you want to install self-signed certificate, you could use [mkcert](https://github.com/FiloSottile/mkcert) to do this.
-more info can be found here [mkcert.md](mkcert.md)
-
-### Usage
-If you want to get all requests and responses about `https://www.exmample.com (192.168.3.3)` 
-1. change domain ip like:`127.0.0.1 www.example.com`
-2. run commands below:
-```shell
-# run with sbt
-sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --viewPort=9000"
-
-
-# run with docker
-# config file would be:
-
-# jks {
-#   path=/server/config/jks.jks
-#   password=123456
-# }
-# resolver=[114.114.114.114]
-# viewerPort=9000
-# ##selfSignedCert = "" # if you use self signed cert.
-
-docker run --rm  -v ${pwd}/private.conf:/server/config/application.conf -v${pwd}/jks.jks:/server/config/jks.jks -p 443:443 -p 9000:9000 ghcr.io/timzaak/log-http-proxy:latest
-
-
-# open your browser to access http://127.0.0.1:9000
+### Quick Start
+Suppose you're intercepting traffic for https://www.example.com (IP: 192.168.3.3).
+#### Step 1: Local Host Mapping
+Edit your system's host file (e.g., `/etc/hosts` or `C:\Windows\System32\drivers\etc\hosts`):
 
 ```
-<img src="/doc/usage.png" alt="usage" width="500" />
+127.0.0.1 www.example.com
+```
+#### Step 2: Run the Proxy
+##### Using SBT
+```bash
+sbt "runMain Main --dns=192.168.3.3:www.example.com --jks-path=jks.jks --jks-password=123456 --viewPort=9000"
+```
+##### Using Docker
+Create a `private.conf` file with the following content:
+```hocon
+jks {
+  path = "/server/config/jks.jks"
+  password = "123456"
+}
+resolver = [114.114.114.114]
+viewerPort = 9000
+# selfSignedCert = ""  # Uncomment if using a self-signed cert
+```
+Then run:
+```bash
+docker run --rm \
+  -v ${PWD}/private.conf:/server/config/application.conf \
+  -v ${PWD}/jks.jks:/server/config/jks.jks \
+  -p 443:443 -p 9000:9000 \
+  ghcr.io/timzaak/log-http-proxy:latest
 
-The params are:
+```
+> Open your browser and navigate to http://127.0.0.1:9000 to view traffic logs.
 
-* dns: A list of domain-to-IP mappings in the format ip:domain. These mappings will be added to the DNS resolver.
-* jksPath: An optional path to a JKS file for SSL/TLS configuration.
-* jksPassword: An optional password for the JKS file specified by jksPath.
-* resolver: An optional custom DNS resolver address, e.g., 1.1.1.1, 8.8.8.8.
-* websocketPort: An optional port to start a WebSocket server for logging. If not provided, logs would output to the command line.
+<img src="/doc/usage.png" alt="Usage screenshot" width="500" /> 
 
-### Package as command-line tool
-```shell
-### you can package it with the following command: 
+### Parameters
+
+| Name             | Description                                                     |
+|------------------| --------------------------------------------------------------- |
+| `--dns`          | A list of `IP:domain` mappings to inject into the DNS resolver. |
+| `--jks-path`     | Path to the JKS file containing the SSL certificate and key.    |
+| `--jks-password` | Password for the JKS keystore.                                  |
+| `--resolver`     | (Optional) DNS resolver to use (e.g., `1.1.1.1`).               |
+| `--viewPort`     | (Optional) Port for the web UI or WebSocket logging.            |
+
+
+### Packaging as a CLI Tool
+```bash
+# Package with sbt
 sbt stage
+
+# Then package with jpackage
 cd package
-
 version="0.1.0"
-jpackage --name https-proxy --input ../target/universal/stage/lib --main-jar https-proxy.https-proxy-${version}.jar --main-class Main --type app-image --win-console
 
+jpackage \
+  --name https-proxy \
+  --input ../target/universal/stage/lib \
+  --main-jar https-proxy.https-proxy-${version}.jar \
+  --main-class Main \
+  --type app-image \
+  --win-console
 ```
 
 
 ### Known Issue
-1. Request does not support brotli compression, would drop request header: Accept-Encoding.
-2. Request would drop header remote-address
+1. Brotli compression (Accept-Encoding: br) is not supported. This header will be stripped.
+2. remote-address headers are not retained.
 
 
-### Another way to log
+### Alternative Logging (Raw Packet Capture)
+#### On Linux Server
+> Note: Windows users may need to use `tshark` instead.
 
-```shell
-### Linux Server
-#### Windows may need use tshark to replace it.
+```bash
 ssh user@remote 'tcpdump -i any -w - -U port <port>' | wireshark -k -i -
-
-
-### K8S use debug to inject and run tcpdump, then k8s exec to get tcpdump output
-kubectl debug -it <pod-name> -n <namespace> --image=nicolaka/netshoot --target=<container-name>
-
 ```
+
+#### On Kubernetes
+```bash
+kubectl debug -it <pod-name> -n <namespace> \
+  --image=nicolaka/netshoot \
+  --target=<container-name>
+```
+Use tcpdump inside the debug container to capture traffic.
