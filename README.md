@@ -45,7 +45,7 @@ docker run --rm \
   ghcr.io/timzaak/log-http-proxy:latest
 
 ```
-> Open your browser and navigate to http://127.0.0.1:9000 to view traffic logs.
+> Open your browser and navigate to `http://127.0.0.1:9000` to view traffic logs. or with ip `http://127.0.0.1:9000?ip=${http client ip}`
 
 <img src="/doc/usage.png" alt="Usage screenshot" width="500" /> 
 

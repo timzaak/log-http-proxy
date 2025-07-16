@@ -36,10 +36,11 @@ class LogWebViewer(certPath: Option[String])(using system: ActorSystem) {
 
   private val viewerEndpoint = endpoint.get
     .in("")
+    .in(query[Option[String]]("ip"))
     .in(extractFromRequest(identity))
     .out(htmlBodyUtf8)
-    .serverLogicSuccess { request =>
-      val ip = extractClientIP(request)
+    .serverLogicSuccess { (ipParam, request) =>
+      val ip = ipParam.getOrElse(extractClientIP(request))
       val certDesc = certPath match {
         case Some(_) =>
           s"""<p>the server use self signed cert, you may need to register the self signed rootCA.pem to your system. </p>
