@@ -1,13 +1,9 @@
 name: CD
 
 on:
-  # 输入version
-  workflow_dispatch:
-    inputs:
-      version:
-        description: 'version number'
-        required: true
-        default: '0.1.0'
+  push:
+    tags:
+      - 'v*'
 jobs:
   build_and_push:
     strategy:
@@ -24,11 +20,15 @@ jobs:
     permissions:
       contents: write
     outputs:
-      version: ${{ inputs.version }}
+      version: ${{ steps.get_version.outputs.version }}
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
+      
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/v}" >> $GITHUB_OUTPUT
       - uses: coursier/cache-action@v6
       - uses: coursier/setup-action@v1
         with:
@@ -39,20 +39,20 @@ jobs:
         run: sbt clean stage
 
       - name: package
-        run: jpackage --name log-http-proxy --input target/universal/stage/lib --main-jar log-http-proxy.log-http-proxy-${{ inputs.version }}.jar --main-class Main --type app-image
+        run: jpackage --name log-http-proxy --input target/universal/stage/lib --main-jar log-http-proxy.log-http-proxy-${{ steps.get_version.outputs.version }}.jar --main-class Main --type app-image
 
       - name: Upload macOS artifact
         if: matrix.platform.artifact_os_name == 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ steps.get_version.outputs.version }}
           path: log-http-proxy.app
           if-no-files-found: error
       - name: Upload Linux/Windows artifact
         if: matrix.platform.artifact_os_name != 'macos'
         uses: actions/upload-artifact@v4
         with:
-          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ inputs.version }}
+          name: log-http-proxy-${{ matrix.platform.artifact_os_name }}-${{ steps.get_version.outputs.version }}
           path: log-http-proxy
           if-no-files-found: error
 
